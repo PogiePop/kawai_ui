@@ -1,0 +1,22 @@
+#ifndef KA_BASIC
+#define KA_BASIC
+#include <print>
+
+#define KA_ASSERT(condition, msg) \
+    if (!(condition)) { \
+        std::println("断言失败: {}", #condition); \
+        std::println("文件: {}", __FILE__); \
+        std::println("行号: {}", __LINE__); \
+        std::println("信息: {}", msg); \
+        std::abort(); \
+        exit(1);\
+    }
+
+//shader & 0x08 = 0 |  program & 0x08 = 0x08
+#define VERTEX_SHADER 0x01
+#define GEOMETRY_SHADER 0x02
+#define FRAGMENT_SHADER 0x04
+#define PROGRAM 0x08
+
+
+#endif

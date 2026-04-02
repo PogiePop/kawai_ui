@@ -1,0 +1,36 @@
+#include <mesh>
+
+namespace Kawai
+{
+    void Mesh::init(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices)
+    {
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, this->vertices.size(), this->vertices.data(), GL_DYNAMIC_DRAW);
+        glGenBuffers(1, &ebo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size(), this->indices.data(), GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, position)));
+        glBindVertexArray(0);
+    }
+
+
+    Mesh CreateUIRectMesh(float x, float y, int w, int h)
+    {
+        std::vector<Vertex>vertices{
+            {Vertex{.position = glm::vec2(x, y), .color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)}},
+            {Vertex{.position = glm::vec2(x, y + h), .color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)}},
+            {Vertex{.position = glm::vec2(x + w, y + h), .color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)}},
+            {Vertex{.position = glm::vec2(x + w, y), .color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)}}
+        };
+        std::vector<GLuint>indices{
+            0, 1, 2, 0, 2, 3
+        };
+        return Mesh(vertices, indices);
+    }
+}

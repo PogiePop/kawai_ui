@@ -1,0 +1,42 @@
+#ifndef KAWAI_UI_COMPONENT
+#define KAWAI_UI_COMPONENT
+#include <shader>
+#include <mesh>
+#include <ui_render>
+
+//自适应有时间再写
+
+namespace Kawai
+{
+    class UIComponent
+    {
+        public:
+            UIComponent(float x, float y, int w, int h, int priority = 0, bool visible = true)
+            :priority(priority), visible(visible)
+            {
+                int sc_w = UIRender::GetInstance().GetScreenWidth();
+                int sc_h = UIRender::GetInstance().GetScreenHeight();
+                x = x / sc_w * 2 - 1;
+                w = w / sc_w;
+                y = y / sc_h * 2 - 1;
+                h = h / sc_h;
+                this->x = x;
+                this->y = y;
+                this->w = w;
+                this->h = h;
+                ui_mesh = CreateUIRectMesh(x, y, w, h);
+            }
+
+            virtual void render() = 0;
+
+            virtual ~UIComponent() = default;
+        private:
+            float x, y, w, h;
+            int priority;
+            bool visible;
+            Shader* ui_shader;
+            Mesh ui_mesh;
+    };
+}
+
+#endif

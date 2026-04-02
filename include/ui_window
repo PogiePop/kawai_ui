@@ -1,0 +1,35 @@
+#ifndef KAWAI_UI_WINDOW
+#define KAWAI_UI_WINDOW
+#include <ui_render>
+#include <ui_component>
+
+
+namespace Kawai
+{
+    class UIWindow
+    {
+        public:
+            UIWindow(int w, int h, const std::string& title)
+            :w(w), h(h), title(title)
+            {
+                init(w, h, title);
+                ui_render.init(w, h);
+            }
+
+            void OnUpdate();
+            
+            void OnRender();
+
+            void SetWindowColor(const glm::vec4& color){ this->color = color; }
+        private:
+            void init(int w, int h, const std::string& title);
+            std::string title;
+            int w, h;
+            glm::vec4 color = glm::vec4(0.1f, 0.2f, 0.3f, 1.0f);
+            std::vector<UIComponent*>ui_components;
+            UIRender ui_render;
+            GLFWwindow* window;
+    };
+}
+
+#endif

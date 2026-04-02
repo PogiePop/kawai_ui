@@ -1,0 +1,29 @@
+#ifndef _KAWAI_SHADER
+#define _KAWAI_SHADER
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <string>
+#include <glm/glm.hpp>
+
+namespace Kawai
+{
+    class Shader
+    {
+        public:
+            Shader(const char* vertexShader, const char* geometryShader = nullptr, const char* fragmentShader = nullptr);
+            ~Shader();
+            void use()const { glUseProgram(ID); }
+            void SetMat4(const std::string& name, const glm::mat4& value)const;
+            void SetVec3(const std::string& name, const glm::vec3& value)const;
+            void SetFloat1(const std::string& name, const float& value)const;
+            void SetInt1(const std::string& name, const int& value)const;
+        private:
+            int GetLocationFromProgram(const std::string& name)const{ return glGetUniformLocation(ID, name.c_str()); }
+            void CheckCompileErrors(const GLuint& id, const GLuint& _type)const; 
+        private:
+            GLuint ID;
+    };
+}
+
+#endif
