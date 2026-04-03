@@ -23,6 +23,7 @@ add_library(kawai STATIC
     ${SRC}/ui_render.cpp
     ${SRC}/mesh.cpp
     ${SRC}/ui_window.cpp
+    ${SRC}/ui_components.cpp
 )
 
 include_directories(

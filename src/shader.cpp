@@ -113,6 +113,20 @@ namespace Kawai
             glUniform1i(location, value);
     }
 
+    void Shader::SetVec4(const std::string& name, const glm::vec4& value)const
+    {
+        int location = GetLocationFromProgram(name);
+        if(location != -1)
+            glUniform4fv(location, 1, glm::value_ptr(value));
+    }
+
+    void Shader::SetVec2(const std::string& name, const glm::vec2& value)const
+    {
+        int location = GetLocationFromProgram(name);
+        if(location != -1)
+            glUniform2fv(location, 1, glm::value_ptr(value));
+    }
+
     void Shader::CheckCompileErrors(const GLuint& id, const GLuint& _type)const
     {
         //不合法id
@@ -147,4 +161,6 @@ namespace Kawai
             }
         }
     }
+
+    //Shader defaultUIShader = Shader("shaders/ui.vert", nullptr, "shaders/ui.frag");
 }

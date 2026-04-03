@@ -13,22 +13,42 @@ namespace Kawai
             :w(w), h(h), title(title)
             {
                 init(w, h, title);
-                ui_render.init(w, h);
+                this->defaultUIShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui.frag");
+                this->radiusShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_radius.frag");
             }
+
+            ~UIWindow();
 
             void OnUpdate();
             
             void OnRender();
 
             void SetWindowColor(const glm::vec4& color){ this->color = color; }
+            
+            template<std::derived_from<UIComponent>T>
+            void AddComponent(T* comp)
+            {
+                comp->InitMesh();
+                switch(comp->GetComponentType())
+                {
+                    case Rect: comp->SetShader(this->defaultUIShader);
+                    break;
+                    case Panel: comp->SetShader(this->radiusShader);
+                    break;
+                    default: break;
+                }
+                this->ui_components.push_back(comp);
+            }
         private:
             void init(int w, int h, const std::string& title);
             std::string title;
             int w, h;
             glm::vec4 color = glm::vec4(0.1f, 0.2f, 0.3f, 1.0f);
             std::vector<UIComponent*>ui_components;
-            UIRender ui_render;
+            //UIRender ui_render;
             GLFWwindow* window;
+            Shader* defaultUIShader;
+            Shader* radiusShader;
     };
 }
 

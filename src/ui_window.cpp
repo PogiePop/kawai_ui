@@ -6,7 +6,7 @@ namespace Kawai
     {
         glfwInit();
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         window = glfwCreateWindow(w, h, title.c_str(), nullptr, nullptr);
@@ -22,6 +22,8 @@ namespace Kawai
         }
 
         glViewport(0, 0, w, h);
+
+        UIRender::GetInstance().init(w, h);
         
         glfwSetWindowUserPointer(window, this);
     }
@@ -39,8 +41,22 @@ namespace Kawai
     {
         glClearColor(color.r, color.g, color.b, color.a);
         glClear(GL_COLOR_BUFFER_BIT);
+        for(const auto& comp : ui_components)
+            comp->render();
         glfwSwapBuffers(window);
     }
 
+
+    UIWindow::~UIWindow()
+    {   
+        for(auto& comp : ui_components)
+        {
+            delete comp;
+        }
+        ui_components.clear();
+        delete defaultUIShader;
+        if(this->window)
+            glfwDestroyWindow(window);
+    }
     
 }

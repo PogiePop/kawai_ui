@@ -9,19 +9,19 @@ namespace Kawai
     class UIRender
     {
         public:
-            UIRender() = default;
             void init(int width, int height);
             void DrawArrays(GLenum mode, GLuint vao, size_t vertexCount);
             void DrawElements(GLenum mode, GLuint vao, size_t indexCount);
-            static UIRender& GetInstance(){ return render; }
+            static UIRender& GetInstance(){ static UIRender render;  ;return render; }
             int GetScreenWidth()const { return screenWidth; }
             int GetScreenHeight()const{ return screenHeight; }
             void SetScW(int w){ this->screenWidth = w;}
             void SetScH(int h){ this->screenHeight = h; }
         private:
+            UIRender() = default;
             int screenWidth, screenHeight;
             float aspect;
-            static UIRender render;
+            //static UIRender render;
     };
 }
 

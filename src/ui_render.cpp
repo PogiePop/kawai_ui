@@ -3,13 +3,12 @@
 
 namespace Kawai
 {
-    UIRender UIRender::render = UIRender();
-
     void UIRender::init(int width, int height)
     {
+        this->screenWidth = width;
+        this->screenHeight =height;
         aspect = screenWidth / screenHeight;
 
-        render = *this;
         //开启透明混合
         glEnable(GL_BLEND);
         // src * src_alpha + other * (1 - src_alpha)

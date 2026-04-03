@@ -3,39 +3,122 @@
 #include <shader>
 #include <mesh>
 #include <ui_render>
+#include <print>
 
-//自适应有时间再写
+// 自适应有时间再写
 
 namespace Kawai
 {
+
+    enum ComponentType
+    {
+        Rect,
+        Panel,
+        Button
+    };
+
+#define COMPONENT_TYPE_DEF(type)                                                        \
+    static ComponentType GetStaticType() { return ComponentType::type; }                \
+    virtual ComponentType GetComponentType() const override { return GetStaticType(); } \
+    virtual const char *GetTypeName() const override { return #type; }
+
     class UIComponent
     {
-        public:
-            UIComponent(float x, float y, int w, int h, int priority = 0, bool visible = true)
-            :priority(priority), visible(visible)
+    public:
+        UIComponent(float x, float y, int w, int h, int priority = 0, bool visible = true)
+            : x(x), y(y), w(w), h(h), priority(priority), visible(visible)
+        {
+            TransformToNDCP();
+        }
+
+        virtual void InitMesh()
+        {
+            ui_mesh = CreateUIRectMesh(ndc_x, ndc_y, ndc_w, ndc_h);
+        }
+
+        void TransformToNDCP()
+        {
+            glm::vec2 point = toNDC(glm::vec2{x, y});
+            float width = toNDCSizeHorizontal(w);
+            float height = toNDCSizeVertical(h);
+            this->ndc_x = point.x;
+            this->ndc_y = point.y;
+            this->ndc_w = width;
+            this->ndc_h = height;
+        }
+
+        virtual ComponentType GetComponentType()const = 0;
+        virtual const char *GetTypeName()const = 0;
+        virtual void render() const = 0;
+
+        virtual ~UIComponent() = default;
+        glm::vec2 toNDC(const glm::vec2 &p)
+        {
+            glm::vec2 res;
+            res.x = p.x / GetScreenWidth() * 2 - 1;
+            res.y = p.y / GetScreenHeight() * 2 - 1;
+            return res;
+        }
+        float toNDCSizeHorizontal(float x)
+        {
+            return x / (float)GetScreenWidth() * 2.0f;
+        }
+        float toNDCSizeVertical(float y)
+        {
+            return y / (float)GetScreenHeight() * 2.0f;
+        }
+        int GetScreenWidth() const { return UIRender::GetInstance().GetScreenWidth(); }
+        int GetScreenHeight() const { return UIRender::GetInstance().GetScreenHeight(); }
+
+        void SetShader(Shader *sd) { ui_shader = sd; }
+
+    protected:
+        float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
+        int w, h;
+        int priority;
+        bool visible;
+        Shader *ui_shader;
+        Mesh ui_mesh;
+        // layout类还没写暂留
+        std::vector<UIComponent *> childrens;
+    };
+
+    // rect
+    class UIRect : public UIComponent
+    {
+    public:
+        UIRect(float x, float y, int w, int h, glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+            : UIComponent(x, y, w, h), color(color)
+        {
+        }
+        void render() const override;
+        COMPONENT_TYPE_DEF(Rect);
+        ~UIRect() = default;
+
+    private:
+        glm::vec4 color;
+    };
+
+    // panel
+    class UIPanel : public UIComponent
+    {
+    public:
+        UIPanel(float x, float y, int w, int h,
+                glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+                float radius = 50.0f)
+            : UIComponent(x, y, w, h), bgColor(color), radius(radius) 
             {
-                int sc_w = UIRender::GetInstance().GetScreenWidth();
-                int sc_h = UIRender::GetInstance().GetScreenHeight();
-                x = x / sc_w * 2 - 1;
-                w = w / sc_w;
-                y = y / sc_h * 2 - 1;
-                h = h / sc_h;
-                this->x = x;
-                this->y = y;
-                this->w = w;
-                this->h = h;
-                ui_mesh = CreateUIRectMesh(x, y, w, h);
+                ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2.0f;
             }
+        ~UIPanel() = default;
+        COMPONENT_TYPE_DEF(Panel);
+        void render() const override;
 
-            virtual void render() = 0;
+        
 
-            virtual ~UIComponent() = default;
-        private:
-            float x, y, w, h;
-            int priority;
-            bool visible;
-            Shader* ui_shader;
-            Mesh ui_mesh;
+    private:
+        glm::vec4 bgColor;
+        float radius, ndc_radius;
     };
 }
 
