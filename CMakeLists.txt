@@ -40,3 +40,13 @@ add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} glfw3 opengl32 glad kawai)
 
 
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders  # 直接在 Debug/Release 文件夹内
+    COMMENT "Copying shaders..."
+    VERBATIM
+)
+
+

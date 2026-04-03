@@ -1,5 +1,5 @@
 #include <ui_render>
-
+#include <ui_window>
 
 namespace Kawai
 {
@@ -13,6 +13,12 @@ namespace Kawai
         glEnable(GL_BLEND);
         // src * src_alpha + other * (1 - src_alpha)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+
+    void UIRender::SetWindow(UIWindow* window)
+    {
+        this->m_Window = window;
     }
 
     void UIRender::DrawArrays(GLenum mode, GLuint vao, size_t vertexCount)

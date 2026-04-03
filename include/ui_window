@@ -4,8 +4,14 @@
 #include <ui_component>
 
 
+
 namespace Kawai
 {
+    struct SortKey
+    {
+        int order; 
+    };
+
     class UIWindow
     {
         public:
@@ -37,14 +43,23 @@ namespace Kawai
                     break;
                     default: break;
                 }
+                comp->AttachToWindow(this);
                 this->ui_components.push_back(comp);
             }
+
+            
+
+            bool needSort = false;
+        private:
+            void UpdateComponent(UIComponent* comp);
+            void CollectComponent(UIComponent* comp, std::vector<UIComponent*>& queue);
         private:
             void init(int w, int h, const std::string& title);
             std::string title;
             int w, h;
             glm::vec4 color = glm::vec4(0.1f, 0.2f, 0.3f, 1.0f);
             std::vector<UIComponent*>ui_components;
+            //std::vector<UIComponent*> comp_queue;
             //UIRender ui_render;
             GLFWwindow* window;
             Shader* defaultUIShader;

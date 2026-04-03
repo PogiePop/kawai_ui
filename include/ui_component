@@ -10,6 +10,7 @@
 namespace Kawai
 {
 
+    class UIWindow;
     enum ComponentType
     {
         Rect,
@@ -47,9 +48,12 @@ namespace Kawai
             this->ndc_h = height;
         }
 
-        virtual ComponentType GetComponentType()const = 0;
-        virtual const char *GetTypeName()const = 0;
+        virtual ComponentType GetComponentType() const = 0;
+        virtual const char *GetTypeName() const = 0;
         virtual void render() const = 0;
+
+
+        void SetPriority(int order);
 
         virtual ~UIComponent() = default;
         glm::vec2 toNDC(const glm::vec2 &p)
@@ -72,7 +76,25 @@ namespace Kawai
 
         void SetShader(Shader *sd) { ui_shader = sd; }
 
-    protected:
+        
+        template <std::derived_from<UIComponent> T>
+        void AddChildComponent(T *child)
+        {
+            child->InitMesh();
+            this->childrens.push_back(child);
+            childChange = true;
+            if(this->m_Window)
+                child->AttachToWindow(this->m_Window);
+        }
+
+        void AttachToWindow(UIWindow* window)
+        {
+            this->m_Window = window;
+            for(auto& child : childrens)
+                child->AttachToWindow(window);
+        }
+
+    
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
         int w, h;
         int priority;
@@ -81,6 +103,8 @@ namespace Kawai
         Mesh ui_mesh;
         // layout类还没写暂留
         std::vector<UIComponent *> childrens;
+        bool childChange = false;
+        UIWindow* m_Window = nullptr;
     };
 
     // rect
@@ -106,10 +130,10 @@ namespace Kawai
         UIPanel(float x, float y, int w, int h,
                 glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
                 float radius = 50.0f)
-            : UIComponent(x, y, w, h), bgColor(color), radius(radius) 
-            {
-                ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2.0f;
-            }
+            : UIComponent(x, y, w, h), bgColor(color), radius(radius)
+        {
+            ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2.0f;
+        }
         ~UIPanel() = default;
         COMPONENT_TYPE_DEF(Panel);
         void render() const override;

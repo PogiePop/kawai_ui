@@ -4,8 +4,10 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
+
 namespace Kawai
 {
+    class UIWindow;
     class UIRender
     {
         public:
@@ -17,10 +19,13 @@ namespace Kawai
             int GetScreenHeight()const{ return screenHeight; }
             void SetScW(int w){ this->screenWidth = w;}
             void SetScH(int h){ this->screenHeight = h; }
+            void SetWindow(UIWindow* window);
         private:
             UIRender() = default;
             int screenWidth, screenHeight;
             float aspect;
+
+            UIWindow* m_Window;
             //static UIRender render;
     };
 }
