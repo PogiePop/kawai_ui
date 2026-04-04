@@ -34,7 +34,7 @@ namespace Kawai
 
         virtual void InitMesh()
         {
-            ui_mesh = CreateUIRectMesh(ndc_x, ndc_y, ndc_w, ndc_h);
+            ui_mesh = CreateUIRectMesh(x, y, w, h);
         }
 
         void TransformToNDCP()
@@ -76,11 +76,20 @@ namespace Kawai
 
         void SetShader(Shader *sd) { ui_shader = sd; }
 
+        void UpdateComponentSize()
+        {
+            TransformToNDCP();
+            ModifyUIRectMesh(this->ui_mesh, x, y, w, h);
+            for(auto& child : childrens)
+                child->UpdateComponentSize();
+        }
+
         
         template <std::derived_from<UIComponent> T>
         void AddChildComponent(T *child)
         {
             child->InitMesh();
+            child->parent = this;
             this->childrens.push_back(child);
             childChange = true;
             if(this->m_Window)
@@ -94,6 +103,13 @@ namespace Kawai
                 child->AttachToWindow(window);
         }
 
+        glm::vec2 GetWorldPos()const
+        {
+            if(!parent)
+                return {x, y};
+            return parent->GetWorldPos() + glm::vec2(x, y);
+        }
+
     
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
         int w, h;
@@ -103,6 +119,7 @@ namespace Kawai
         Mesh ui_mesh;
         // layout类还没写暂留
         std::vector<UIComponent *> childrens;
+        UIComponent* parent = nullptr;
         bool childChange = false;
         UIWindow* m_Window = nullptr;
     };

@@ -28,6 +28,20 @@ namespace Kawai
         UIRender::GetInstance().SetWindow(this);
 
         glfwSetWindowUserPointer(window, this);
+
+
+        //设置回调
+        glfwSetFramebufferSizeCallback(window ,[](GLFWwindow* window, int wdith, int height){
+            glViewport(0, 0, wdith, height);
+            
+            UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
+            if(self)
+            {
+                UIRender::GetInstance().SetScW(wdith);
+                UIRender::GetInstance().SetScH(height);
+                self->needResize = true;        
+            }
+        });
     }
 
     void UIWindow::OnUpdate()
@@ -48,6 +62,13 @@ namespace Kawai
         {
             if(comp->childChange)
                 UpdateComponent(comp);
+        }
+
+        if(needResize)
+        {
+            for(auto& comp : ui_components)
+                comp->UpdateComponentSize();
+            needResize = false;
         }
 
         //构建优先队列

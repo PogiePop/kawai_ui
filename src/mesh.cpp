@@ -1,4 +1,5 @@
 #include <mesh>
+#include <print>
 
 namespace Kawai
 {
@@ -36,5 +37,15 @@ namespace Kawai
             0, 1, 2, 0, 2, 3
         };
         return Mesh(vertices, indices);
+    }
+
+    void ModifyUIRectMesh(Mesh& mesh, float x, float y, float w, float h)
+    {
+        //std::println("({}, {}, {}, {})", x, y, w, h);
+        auto& v = mesh.vertices;
+        v[0].position = {x, y};
+        v[1].position = {x, y + h};
+        v[2].position = {x + w, y + h};
+        v[3].position = {x + w, y}; 
     }
 }

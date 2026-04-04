@@ -33,6 +33,8 @@ namespace Kawai
     };
 
     Mesh CreateUIRectMesh(float x, float y, float w, float h);
+
+    void ModifyUIRectMesh(Mesh& mesh, float x, float y, float w, float h);
 }
 
 

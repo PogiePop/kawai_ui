@@ -50,6 +50,7 @@ namespace Kawai
             
 
             bool needSort = false;
+            bool needResize = false;
         private:
             void UpdateComponent(UIComponent* comp);
             void CollectComponent(UIComponent* comp, std::vector<UIComponent*>& queue);
