@@ -2,6 +2,10 @@
 #include <ka_basic>
 #include <algorithm>
 #include <ka_time>
+#include <event/event>
+#include <event/event_window>
+#include <event/event_mouse>
+#include <stack>
 namespace Kawai
 {
     void UIWindow::init(int w, int h, const std::string &title)
@@ -30,19 +34,42 @@ namespace Kawai
 
         glfwSetWindowUserPointer(window, this);
 
+        // 初始化回调函数
+        m_SizeCall = [this](GLFWwindow *, int width, int height)
+        {
+            // 事件处理
+            WindowResizeEvent wre(width, height);
+            OnEvent(wre);
+        };
 
-        //设置回调
-        glfwSetFramebufferSizeCallback(window ,[](GLFWwindow* window, int wdith, int height){
-            glViewport(0, 0, wdith, height);
+        m_CursorCall = [this](GLFWwindow *, double x, double y)
+        {
+            MouseMoveEvent mme(x, y);
+            OnEvent(mme);
+        };
+
+        // 设置回调
+        glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height)
+                                       {
+            glViewport(0, 0, width, height);
+
             
             UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
             if(self)
             {
-                UIRender::GetInstance().SetScW(wdith);
+                UIRender::GetInstance().SetScW(width);
                 UIRender::GetInstance().SetScH(height);
                 self->needResize = true;        
-            }
-        });
+                if(self->m_SizeCall)self->m_SizeCall(window, width, height);
+            } });
+
+        glfwSetCursorPosCallback(window, [](GLFWwindow *window, double x, double y)
+                                 {
+            UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
+            if(self)
+            {
+                if(self->m_CursorCall)self->m_CursorCall(window, x, y);
+            } });
     }
 
     void UIWindow::OnUpdate()
@@ -55,20 +82,21 @@ namespace Kawai
         }
     }
 
+    //TODO: 还有点问题
     void UIWindow::OnRender()
     {
         glClearColor(color.r, color.g, color.b, color.a);
         glClear(GL_COLOR_BUFFER_BIT);
-        //更新组件
+        // 更新组件
         for (auto &comp : ui_components)
         {
-            if(comp->childChange)
+            if (comp->childChange)
                 UpdateComponent(comp);
         }
 
-        if(needResize)
+        if (needResize)
         {
-            for(auto& comp : ui_components)
+            for (auto &comp : ui_components)
                 comp->UpdateComponentSize();
             needResize = false;
         }
@@ -77,24 +105,73 @@ namespace Kawai
         std::vector<UIComponent*>queue;
         for (auto &comp : ui_components)
             CollectComponent(comp, queue);
-        
+
+        // 构建事件队列
+        if (needSort || uiNumChange)
+        {
+            ui_eventQ.clear();
+            std::stack<std::pair<UIComponent *, bool>> st;
+
+            // 根节点逆序入栈 → 后添加的根优先处理
+            for (auto it = ui_components.rbegin(); it != ui_components.rend(); ++it)
+            {
+                st.push({*it, false});
+            }
+
+            while (!st.empty())
+            {
+                auto [comp, visited] = st.top();
+                st.pop();
+
+                if (!visited)
+                {
+                    // 父节点先压回去（等子节点处理完再来处理自己）
+                    st.push({comp, true});
+
+                    // 子节点逆序压栈 → 最右边的子节点最先弹出
+                    for (auto it = comp->childrens.rbegin(); it != comp->childrens.rend(); ++it)
+                    {
+                        st.push({*it, false});
+                    }
+                }
+                else
+                {
+                    // 所有子节点都已经入队了，才入队自己
+                    ui_eventQ.push_back(comp);
+                }
+            }
+
+            // 关键：这里绝对不要 reverse！
+            // std::reverse(ui_eventQ.begin(), ui_eventQ.end());  // 删掉！
+
+            // 稳定排序：优先级高的在前，同优先级保持“子在前，父在后”
+            std::stable_sort(ui_eventQ.begin(), ui_eventQ.end(), [](UIComponent *a, UIComponent *b)
+                             { return a->priority > b->priority; });
+
+            needSort = false;
+            uiNumChange = false;
+        }
+
         //排序
         std::sort(queue.begin(), queue.end(), [](UIComponent* comp1, UIComponent* comp2)
         { return comp1->priority < comp2->priority; });
 
-        //渲染
-        for(const auto& comp : queue)
+        // 渲染
+       for(auto& comp : queue)
+       {
+            comp->renderID = instanceID++;
             comp->render();
-
-
+       }
+       instanceID = 0;
+            
 
         glfwSwapBuffers(window);
     }
 
-    void UIWindow::CollectComponent(UIComponent* comp, std::vector<UIComponent*>& queue)
+    void UIWindow::CollectComponent(UIComponent *comp, std::vector<UIComponent *> &queue)
     {
         queue.push_back(comp);
-        for(const auto& child : comp->childrens)
+        for (const auto &child : comp->childrens)
             CollectComponent(child, queue);
     }
 
@@ -119,6 +196,29 @@ namespace Kawai
             UpdateComponent(child);
         }
         comp->childChange = false;
+    }
+
+    void UIWindow::OnEvent(Event &e)
+    {
+        // 处理ui控件onevent
+        for (auto &comp : ui_eventQ)
+            if (comp->OnEvent(e))
+            {
+                std::println("事件被{}处理, type = {}", comp->renderID, comp->GetTypeName());
+                e.handle = true;
+                break;
+            }
+
+        // ui没有处理完
+        if (!e.handle)
+        {
+            if (e.GetEventType() == EventType::WindowResize)
+            {
+                WindowResizeEvent wre = (WindowResizeEvent &)e;
+                std::println("window resize: ({}x{})", wre.w, wre.h);
+            }
+        }
+        // e.handle = true;
     }
 
     UIWindow::~UIWindow()

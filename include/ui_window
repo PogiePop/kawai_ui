@@ -22,11 +22,16 @@ namespace Kawai
             this->btnShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_btn.frag");
         }
 
+        using WindowFrameSizeCallback = std::function<void(GLFWwindow*, int, int)>;
+        using CursorMoveCallback = std::function<void(GLFWwindow*, double, double)>;
+
         ~UIWindow();
 
         void OnUpdate();
 
         void OnRender();
+
+        void OnEvent(Event& e);
 
         void SetWindowColor(const glm::vec4 &color) { this->color = color; }
 
@@ -50,15 +55,18 @@ namespace Kawai
             }
             comp->AttachToWindow(this);
             this->ui_components.push_back(comp);
-            componentNum++;
+            AddComponentCount();
         }
 
         bool needSort = false;
         bool needResize = false;
+        bool uiNumChange = false;
+        int instanceID = 0;
         int componentNum = 0;
 
         void AddComponentCount()
         {
+            uiNumChange = true;
             this->componentNum++;
         }
 
@@ -72,12 +80,15 @@ namespace Kawai
         int w, h;
         glm::vec4 color = glm::vec4(0.1f, 0.2f, 0.3f, 1.0f);
         std::vector<UIComponent *> ui_components;
+        std::vector<UIComponent* >ui_eventQ;//按照覆盖层遍历，越上面的ui越容易捕获事件
         // std::vector<UIComponent*> comp_queue;
         // UIRender ui_render;
         GLFWwindow *window;
         Shader *defaultUIShader;
         Shader *radiusShader;
         Shader *btnShader;
+        WindowFrameSizeCallback m_SizeCall;
+        CursorMoveCallback m_CursorCall;
     };
 }
 

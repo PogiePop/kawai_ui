@@ -1,0 +1,44 @@
+#ifndef KAWAI_EVENT_KEYBOARD
+#define KAWAI_EVENT_KEYBOARD
+#include <event/event>
+
+namespace Kawai
+{
+    class KeyBoardEvent : public Event
+    {
+        public:
+            EventCategory_DEF(EventCategoryKeyboard)
+            int button;
+    };
+
+    class KeyPressEvent : public KeyBoardEvent
+    {
+        public:
+            EventType_DEF(KeyPress)
+            KeyPressEvent(int btn){ this->button = btn; }
+    };
+
+    class KeyReleaseEvent : public KeyBoardEvent
+    {
+        public:
+            EventType_DEF(KeyRelease)
+            KeyReleaseEvent(int btn){ this->button = btn; }
+    };
+
+    class KeyRepeatEvent : public KeyBoardEvent
+    {
+        public:
+            EventType_DEF(KeyRepeat)
+            KeyRepeatEvent(int btn){ this->button = btn; }
+    };
+
+    class KeyInputEvent : public KeyBoardEvent
+    {
+        public:
+            EventType_DEF(KeyInput)
+            KeyInputEvent(int btn){ this->button = btn; }
+    };
+}
+
+
+#endif

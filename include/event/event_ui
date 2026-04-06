@@ -1,0 +1,52 @@
+#ifndef KAWAI_EVENT_UI
+#define KAWAI_EVENT_UI
+
+#include <event/event>
+
+namespace Kawai
+{
+    // UI大小变化
+    class UISizeEvent : public Event
+    {
+    public:
+        float width, height;
+        UISizeEvent(float w, float h) : width(w), height(h) {}
+
+        EventCategory_DEF(EventCategoryUI)
+        EventType_DEF(UISize)
+    };
+
+    // UI销毁
+    class UIDestroyEvent : public Event
+    {
+    public:
+        EventCategory_DEF(EventCategoryUI)
+        EventType_DEF(UIDestroy)
+    };
+
+    // UI初始化
+    class UIInitEvent : public Event
+    {
+    public:
+        EventCategory_DEF(EventCategoryUI)
+        EventType_DEF(UIInit)
+    };
+
+    // UI获得焦点（hover）
+    class UIFocusEvent : public Event
+    {
+    public:
+        EventCategory_DEF(EventCategoryUI)
+        EventType_DEF(UIFocus)
+    };
+
+    // UI失去焦点
+    class UIBlurEvent : public Event
+    {
+    public:
+        EventCategory_DEF(EventCategoryUI)
+        EventType_DEF(UIBlur)
+    };
+}
+
+#endif

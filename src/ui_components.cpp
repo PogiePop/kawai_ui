@@ -4,6 +4,10 @@
 #include <ka_time>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ui_window>
+#include <event/event>
+#include <event/event_dispatch>
+#include <event/event_ui>
+#include <event/event_mouse>
 
 namespace Kawai
 {
@@ -23,8 +27,6 @@ namespace Kawai
     void UIPanel::render()
     {
         glm::vec2 worldPos = GetWorldPos();
-        if(number == 4)
-        std::println("{}: ({}, {}), ({}, {})", number, worldPos.x, worldPos.y, x, y);
         this->ui_shader->use();
         this->ui_shader->SetVec4("uColor", bgColor);
         this->ui_shader->SetFloat1("uRadius", ndc_radius);
@@ -104,6 +106,83 @@ namespace Kawai
         this->number = this->m_Window->componentNum;
         for (auto &child : childrens)
             child->AttachToWindow(window);
+    }
+
+    bool UIRect::OnEvent(Event &e)
+    {
+        EventDispatch dispatcher(e);
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent &e)
+                                            {
+            //判断是否在控件内
+            bool inside = IsPointInside((float)e.x, (float)e.y);
+            if(inside && !focused)
+            {
+                focused = true;
+                UIFocusEvent fe;
+                //如果设置了聚焦函数
+                //if(focus)(*focus)(fe);
+            }
+            else if(!inside && focused)
+            {
+                focused = false;
+                UIBlurEvent be;
+                //如果设置了失焦函数
+                //if(blur)(*blur)(be);
+            }
+            return inside; });
+        return e.handle;
+    }
+
+    bool UIPanel::OnEvent(Event &e)
+    {
+        EventDispatch dispatcher(e);
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent &e)
+                                            {
+            //判断是否在控件内
+            bool inside = IsPointInside((float)e.x, (float)e.y);
+            if(inside && !focused)
+            {
+                focused = true;
+                UIFocusEvent fe;
+                //如果设置了聚焦函数
+                //if(focus)(*focus)(fe);
+            }
+            else if(!inside && focused)
+            {
+                focused = false;
+                UIBlurEvent be;
+                //如果设置了失焦函数
+                //if(blur)(*blur)(be);
+            }
+            return inside; });
+        return e.handle;
+    }
+
+    bool UIButton::OnEvent(Event &e)
+    {
+        EventDispatch dispatcher(e);
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent &e)
+                                            {
+            //判断是否在控件内
+            bool inside = IsPointInside((float)e.x, (float)e.y);
+            if(inside && !focused)
+            {
+                focused = true;
+                state = Hover;
+                UIFocusEvent fe;
+                //如果设置了聚焦函数
+                if(focus)(*focus)(fe);
+            }
+            else if(!inside && focused)
+            {
+                focused = false;
+                state = Common;
+                UIBlurEvent be;
+                //如果设置了失焦函数
+                if(blur)(*blur)(be);
+            }
+            return inside; });
+        return e.handle;
     }
 
     template void UIComponent::AddChildComponent<UIRect>(UIRect *);

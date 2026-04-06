@@ -1,0 +1,63 @@
+#ifndef KAWAI_EVENT
+#define KAWAI_EVENT
+//事件基类
+
+namespace Kawai
+{
+    #define BIT(x, y) (x << y)
+    enum EventType
+    {
+        //window
+        WindowClose, WindowResize,
+        //mouse
+        MouseMove, MouseScroll, MouseButtonPress, MouseButtonRelease,
+        //keyboard
+        KeyPress, KeyRelease, KeyRepeat, KeyInput,
+        //UI
+        UISize, UIInit, UIDestroy, UIFocus, UIBlur
+    };
+
+    enum EventCategory
+    {
+        NONE,
+        EventCategoryWindow = BIT(1, 0),
+        EventCategoryMouse = BIT(1, 1),
+        EventCategoryKeyboard = BIT(1, 2),
+        EventCategoryUI = BIT(1, 3),
+    };
+
+    #define EventCategory_DEF(type)\
+    static EventCategory GetStaticClassCategory() { return EventCategory::type; }\
+    virtual EventCategory GetEventCategory() const override { return GetStaticClassCategory(); }\
+    virtual const char* GetEventCategoryName() const override { return #type; }
+
+    #define EventType_DEF(type)\
+    static EventType GetStaticType() { return EventType::type; }\
+    virtual EventType GetEventType() const override { return GetStaticType(); }\
+    virtual const char* GetEventTypeName() const override { return #type; }
+
+    class Event
+    {
+        public:
+            virtual ~Event() = default;
+            //标记当前事件是否被处理
+            bool handle = false;
+
+            virtual EventType GetEventType() const = 0;
+            virtual EventCategory GetEventCategory() const = 0;
+            virtual const char* GetEventCategoryName() const = 0;
+            virtual const char* GetEventTypeName() const = 0;
+
+
+            bool IsInCategory(EventCategory category)
+            {
+                return category & GetEventCategory();
+            }
+
+    };
+
+}
+
+
+
+#endif

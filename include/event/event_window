@@ -1,0 +1,25 @@
+#ifndef KAWAI_EVENT_WINDOW
+#define KAWAI_EVENT_WINDOW
+#include <event/event>
+
+namespace Kawai
+{
+   class WindowCloseEvent : public Event
+   {
+        public:
+            EventCategory_DEF(EventCategoryWindow)
+            EventType_DEF(WindowClose)
+
+   };
+
+   class WindowResizeEvent : public Event
+   {
+        public:
+            EventCategory_DEF(EventCategoryWindow)
+            WindowResizeEvent(int w, int h):w(w), h(h){};
+            int w, h;
+            EventType_DEF(WindowResize)
+   };
+}
+
+#endif

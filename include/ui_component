@@ -5,12 +5,16 @@
 #include <ui_render>
 #include <print>
 #include <ui_colors>
+#include <functional>
 
 // 自适应有时间再写
 
 namespace Kawai
 {
 
+    class Event;
+    class UIFocusEvent;
+    class UIBlurEvent;
     class UIWindow;
     enum ComponentType
     {
@@ -52,6 +56,16 @@ namespace Kawai
         virtual ComponentType GetComponentType() const = 0;
         virtual const char *GetTypeName() const = 0;
         virtual void render() = 0;
+        virtual bool IsPointInside(float x, float y)
+        {
+            glm::vec2 worldPos = GetWorldPos();
+            int screenH = GetScreenHeight();
+
+            // 关键：把 GLFW 鼠标 Y 翻转成 UI 坐标系 Y
+            float uiMouseY = screenH - y;
+            return (x > worldPos.x && x < worldPos.x + w) &&
+                   (uiMouseY > worldPos.y && uiMouseY < worldPos.y + h);
+        }
 
         void SetPriority(int order);
 
@@ -108,6 +122,9 @@ namespace Kawai
             return worldPos;
         }
 
+        // 事件处理
+        virtual bool OnEvent(Event &event) = 0;
+
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
         int w, h;
         int priority;
@@ -121,6 +138,8 @@ namespace Kawai
         UIWindow *m_Window = nullptr;
         std::string name;
         GLuint number;
+        bool focused = false;
+        int renderID;
     };
 
     // rect
@@ -132,6 +151,7 @@ namespace Kawai
         {
         }
         void render() override;
+        bool OnEvent(Event &event) override;
         COMPONENT_TYPE_DEF(Rect);
         ~UIRect() = default;
 
@@ -150,6 +170,7 @@ namespace Kawai
         {
             ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2.0f;
         }
+        bool OnEvent(Event &event) override;
         ~UIPanel() = default;
         COMPONENT_TYPE_DEF(Panel);
         void render() override;
@@ -181,8 +202,13 @@ namespace Kawai
         COMPONENT_TYPE_DEF(Button);
 
         void render() override;
+        bool OnEvent(Event &event) override;
 
         void update(float deltatime);
+
+        using OnClick = std::function<void(void)>;
+        using OnBlur = std::function<void(UIBlurEvent &)>;
+        using OnFocus = std::function<void(UIFocusEvent &)>;
 
     private:
         glm::vec4 commonColor = normal_btn_color;
@@ -202,6 +228,10 @@ namespace Kawai
         const float scaleNormal = 1.0f;
         const float scaleHover = 1.02f;
         const float scaleClick = 0.96f;
+
+        OnClick *click = nullptr;
+        OnFocus *focus = nullptr;
+        OnBlur *blur = nullptr;
     };
 }
 

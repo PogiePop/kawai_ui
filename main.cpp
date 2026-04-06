@@ -19,6 +19,9 @@ int main()
     panel->AddChildComponent<Kawai::UIPanel>(panel1);
     panel1->AddChildComponent<Kawai::UIPanel>(panel2);
     panel2->AddChildComponent<Kawai::UIButton>(btn1);
+    //btn1->SetPriority(10);
+
+    
     // panel2->AddChildComponent<Kawai::UIPanel>(panel3);
     //rect->SetPriority(100);
 

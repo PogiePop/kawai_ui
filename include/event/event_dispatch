@@ -1,0 +1,32 @@
+#ifndef KAWAI_EVENT_DISPATCH
+#define KAWAI_EVENT_DISPATCH
+#include <event/event>
+
+
+namespace Kawai
+{
+    class EventDispatch
+    {
+        public:
+            EventDispatch(Event& event): m_Event(event){}
+
+            template<typename T, typename F>
+            bool Dispatch(const F& func)
+            {
+                if(m_Event.GetEventType() == T::GetStaticType())
+                {
+                    if(!m_Event.handle)
+                    {
+                        m_Event.handle |= func((T&)m_Event);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        private:
+            Event& m_Event;
+    };
+}
+
+
+#endif
