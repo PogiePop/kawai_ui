@@ -4,32 +4,39 @@
 
 namespace Kawai
 {
+    
     // 1. 白色 (不透明)
-    glm::vec4 white(1.0f, 1.0f, 1.0f, 1.0f);
+    inline glm::vec4 white(1.0f, 1.0f, 1.0f, 1.0f);
 
     // 2. 红色 (半透明)
-    glm::vec4 red(1.0f, 0.0f, 0.0f, 0.5f);
+    inline glm::vec4 red(1.0f, 0.0f, 0.0f, 0.5f);
 
     // 3. 绿色 (完全透明)
-    glm::vec4 green(0.0f, 1.0f, 0.0f, 0.0f);
+    inline glm::vec4 green(0.0f, 1.0f, 0.0f, 0.0f);
 
     // 4. 蓝色 (不透明)
-    glm::vec4 blue(0.0f, 0.0f, 1.0f, 1.0f);
+    inline glm::vec4 blue(0.0f, 0.0f, 1.0f, 1.0f);
 
     // 基础纯色（不透明）
-    glm::vec4 color_black(0.0f, 0.0f, 0.0f, 1.0f);   // 黑色
-    glm::vec4 color_white(1.0f, 1.0f, 1.0f, 1.0f);   // 白色
-    glm::vec4 color_red(1.0f, 0.0f, 0.0f, 1.0f);     // 红色
-    glm::vec4 color_green(0.0f, 1.0f, 0.0f, 1.0f);   // 绿色
-    glm::vec4 color_blue(0.0f, 0.0f, 1.0f, 1.0f);    // 蓝色
-    glm::vec4 color_yellow(1.0f, 1.0f, 0.0f, 1.0f);  // 黄色
-    glm::vec4 color_cyan(0.0f, 1.0f, 1.0f, 1.0f);    // 青色
-    glm::vec4 color_magenta(1.0f, 0.0f, 1.0f, 1.0f); // 品红
-    glm::vec4 color_gray(0.5f, 0.5f, 0.5f, 1.0f);    // 灰色
+    inline glm::vec4 color_black(0.0f, 0.0f, 0.0f, 1.0f);   // 黑色
+    inline glm::vec4 color_white(1.0f, 1.0f, 1.0f, 1.0f);   // 白色
+    inline glm::vec4 color_red(1.0f, 0.0f, 0.0f, 1.0f);     // 红色
+    inline glm::vec4 color_green(0.0f, 1.0f, 0.0f, 1.0f);   // 绿色
+    inline glm::vec4 color_blue(0.0f, 0.0f, 1.0f, 1.0f);    // 蓝色
+    inline glm::vec4 color_yellow(1.0f, 1.0f, 0.0f, 1.0f);  // 黄色
+    inline glm::vec4 color_cyan(0.0f, 1.0f, 1.0f, 1.0f);    // 青色
+    inline glm::vec4 color_magenta(1.0f, 0.0f, 1.0f, 1.0f); // 品红
+    inline glm::vec4 color_gray(0.5f, 0.5f, 0.5f, 1.0f);    // 灰色
 
     // 半透明颜色
-    glm::vec4 color_transparent_red(1.0f, 0.0f, 0.0f, 0.3f);   // 半透红
-    glm::vec4 color_transparent_white(1.0f, 1.0f, 1.0f, 0.5f); // 半透白
+    inline glm::vec4 color_transparent_red(1.0f, 0.0f, 0.0f, 0.3f);   // 半透红
+    inline glm::vec4 color_transparent_white(1.0f, 1.0f, 1.0f, 0.5f); // 半透白
+
+    // button
+    // common
+    inline glm::vec4 normal_btn_color = {0.22f, 0.58f, 0.98f, 1.0f};
+    inline glm::vec4 hover_btn_color = {0.35f, 0.68f, 0.99f, 1.0f};
+    inline glm::vec4 click_btn_color = {0.16f, 0.48f, 0.88f, 1.0f};
 }
 
 #endif

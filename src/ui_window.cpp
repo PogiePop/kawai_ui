@@ -1,6 +1,7 @@
 #include <ui_window>
 #include <ka_basic>
 #include <algorithm>
+#include <ka_time>
 namespace Kawai
 {
     void UIWindow::init(int w, int h, const std::string &title)
@@ -48,6 +49,7 @@ namespace Kawai
     {
         while (!glfwWindowShouldClose(window))
         {
+            Time::GetInstance().UpdateTime();
             OnRender();
             glfwPollEvents();
         }
@@ -107,6 +109,9 @@ namespace Kawai
                 break;
             case Panel:
                 child->SetShader(this->radiusShader);
+                break;
+            case Button:
+                child->SetShader(this->btnShader);
                 break;
             default:
                 break;

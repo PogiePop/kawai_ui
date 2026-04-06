@@ -1,0 +1,29 @@
+#ifndef KAWAI_TIME
+#define KAWAI_TIME
+#include <GLFW/glfw3.h>
+
+namespace Kawai
+{
+    class Time
+    {
+    public:
+        void UpdateTime()
+        {
+            float cur = (float)glfwGetTime();
+            deltatime = cur - lastTime;
+            lastTime = cur;
+        }
+        static Time &GetInstance()
+        {
+            static Time time = Time();
+            return time;
+        }
+        float deltatime;
+
+    private:
+        Time() = default;
+        float lastTime = 0.0f;
+    };
+}
+
+#endif

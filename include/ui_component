@@ -4,6 +4,7 @@
 #include <mesh>
 #include <ui_render>
 #include <print>
+#include <ui_colors>
 
 // 自适应有时间再写
 
@@ -34,7 +35,7 @@ namespace Kawai
 
         virtual void InitMesh()
         {
-            ui_mesh = CreateUIRectMesh(x, y, w, h);
+            ui_mesh = CreateUIRectMesh(0, 0, w, h);
         }
 
         void TransformToNDCP()
@@ -50,8 +51,7 @@ namespace Kawai
 
         virtual ComponentType GetComponentType() const = 0;
         virtual const char *GetTypeName() const = 0;
-        virtual void render() const = 0;
-
+        virtual void render() = 0;
 
         void SetPriority(int order);
 
@@ -74,43 +74,40 @@ namespace Kawai
         int GetScreenWidth() const { return UIRender::GetInstance().GetScreenWidth(); }
         int GetScreenHeight() const { return UIRender::GetInstance().GetScreenHeight(); }
 
-        void SetShader(Shader *sd) { ui_shader = sd; }
+        void SetShader(Shader *sd)
+        {
+            ui_shader = sd;
+        }
 
         void UpdateComponentSize()
         {
             TransformToNDCP();
             ModifyUIRectMesh(this->ui_mesh, x, y, w, h);
-            for(auto& child : childrens)
+            for (auto &child : childrens)
                 child->UpdateComponentSize();
         }
 
-        
         template <std::derived_from<UIComponent> T>
-        void AddChildComponent(T *child)
+        void AddChildComponent(T *child);
+
+        void AttachToWindow(UIWindow *window);
+
+        glm::vec2 GetWorldPos() const
         {
-            child->InitMesh();
-            child->parent = this;
-            this->childrens.push_back(child);
-            childChange = true;
-            if(this->m_Window)
-                child->AttachToWindow(this->m_Window);
+            glm::vec2 worldPos = {x, y};
+
+            // 递归向上累加所有父节点坐标
+            const UIComponent *p = this->parent;
+            while (p != nullptr)
+            {
+                worldPos.x += p->x;
+                worldPos.y += p->y;
+                p = p->parent;
+            }
+
+            return worldPos;
         }
 
-        void AttachToWindow(UIWindow* window)
-        {
-            this->m_Window = window;
-            for(auto& child : childrens)
-                child->AttachToWindow(window);
-        }
-
-        glm::vec2 GetWorldPos()const
-        {
-            if(!parent)
-                return {x, y};
-            return parent->GetWorldPos() + glm::vec2(x, y);
-        }
-
-    
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
         int w, h;
         int priority;
@@ -119,9 +116,11 @@ namespace Kawai
         Mesh ui_mesh;
         // layout类还没写暂留
         std::vector<UIComponent *> childrens;
-        UIComponent* parent = nullptr;
+        UIComponent *parent = nullptr;
         bool childChange = false;
-        UIWindow* m_Window = nullptr;
+        UIWindow *m_Window = nullptr;
+        std::string name;
+        GLuint number;
     };
 
     // rect
@@ -132,7 +131,7 @@ namespace Kawai
             : UIComponent(x, y, w, h), color(color)
         {
         }
-        void render() const override;
+        void render() override;
         COMPONENT_TYPE_DEF(Rect);
         ~UIRect() = default;
 
@@ -153,13 +152,56 @@ namespace Kawai
         }
         ~UIPanel() = default;
         COMPONENT_TYPE_DEF(Panel);
-        void render() const override;
-
-        
+        void render() override;
 
     private:
         glm::vec4 bgColor;
         float radius, ndc_radius;
+    };
+
+    // Button
+    class UIButton : public UIComponent
+    {
+    public:
+        UIButton(float x, float y, int w, int h, float radius = 50.0f)
+            : UIComponent(x, y, w, h), radius(radius)
+        {
+            ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2.0f;
+            this->currentColor = commonColor;
+        }
+
+        enum ButtonStatus
+        {
+            Common,
+            Hover,
+            Click
+        };
+
+        ~UIButton() = default;
+        COMPONENT_TYPE_DEF(Button);
+
+        void render() override;
+
+        void update(float deltatime);
+
+    private:
+        glm::vec4 commonColor = normal_btn_color;
+        glm::vec4 hoverColor = hover_btn_color;
+        glm::vec4 clickColor = click_btn_color;
+        float radius, ndc_radius;
+        ButtonStatus state = Common;
+        bool enableShadow = true;
+        glm::vec2 shadowOffset = {0.02f, -0.02f};
+        float shadowBlur = 0.04f;
+        glm::vec4 shadowColor = {0.0f, 0.0f, 0.0f, 0.3f};
+
+        glm::vec4 currentColor;
+
+        // animation
+        float scale = 1.0f;
+        const float scaleNormal = 1.0f;
+        const float scaleHover = 1.02f;
+        const float scaleClick = 0.96f;
     };
 }
 

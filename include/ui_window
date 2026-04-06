@@ -3,68 +3,81 @@
 #include <ui_render>
 #include <ui_component>
 
-
-
 namespace Kawai
 {
     struct SortKey
     {
-        int order; 
+        int order;
     };
 
     class UIWindow
     {
-        public:
-            UIWindow(int w, int h, const std::string& title)
-            :w(w), h(h), title(title)
+    public:
+        UIWindow(int w, int h, const std::string &title)
+            : w(w), h(h), title(title)
+        {
+            init(w, h, title);
+            this->defaultUIShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui.frag");
+            this->radiusShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_radius.frag");
+            this->btnShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_btn.frag");
+        }
+
+        ~UIWindow();
+
+        void OnUpdate();
+
+        void OnRender();
+
+        void SetWindowColor(const glm::vec4 &color) { this->color = color; }
+
+        template <std::derived_from<UIComponent> T>
+        void AddComponent(T *comp)
+        {
+            comp->InitMesh();
+            switch (comp->GetComponentType())
             {
-                init(w, h, title);
-                this->defaultUIShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui.frag");
-                this->radiusShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_radius.frag");
+            case Rect:
+                comp->SetShader(this->defaultUIShader);
+                break;
+            case Panel:
+                comp->SetShader(this->radiusShader);
+                break;
+            case Button:
+                comp->SetShader(this->btnShader);
+                break;
+            default:
+                break;
             }
+            comp->AttachToWindow(this);
+            this->ui_components.push_back(comp);
+            componentNum++;
+        }
 
-            ~UIWindow();
+        bool needSort = false;
+        bool needResize = false;
+        int componentNum = 0;
 
-            void OnUpdate();
-            
-            void OnRender();
+        void AddComponentCount()
+        {
+            this->componentNum++;
+        }
 
-            void SetWindowColor(const glm::vec4& color){ this->color = color; }
-            
-            template<std::derived_from<UIComponent>T>
-            void AddComponent(T* comp)
-            {
-                comp->InitMesh();
-                switch(comp->GetComponentType())
-                {
-                    case Rect: comp->SetShader(this->defaultUIShader);
-                    break;
-                    case Panel: comp->SetShader(this->radiusShader);
-                    break;
-                    default: break;
-                }
-                comp->AttachToWindow(this);
-                this->ui_components.push_back(comp);
-            }
+    private:
+        void UpdateComponent(UIComponent *comp);
+        void CollectComponent(UIComponent *comp, std::vector<UIComponent *> &queue);
 
-            
-
-            bool needSort = false;
-            bool needResize = false;
-        private:
-            void UpdateComponent(UIComponent* comp);
-            void CollectComponent(UIComponent* comp, std::vector<UIComponent*>& queue);
-        private:
-            void init(int w, int h, const std::string& title);
-            std::string title;
-            int w, h;
-            glm::vec4 color = glm::vec4(0.1f, 0.2f, 0.3f, 1.0f);
-            std::vector<UIComponent*>ui_components;
-            //std::vector<UIComponent*> comp_queue;
-            //UIRender ui_render;
-            GLFWwindow* window;
-            Shader* defaultUIShader;
-            Shader* radiusShader;
+    private:
+        void init(int w, int h, const std::string &title);
+        std::string title;
+        int w, h;
+        glm::vec4 color = glm::vec4(0.1f, 0.2f, 0.3f, 1.0f);
+        std::vector<UIComponent *> ui_components;
+        // std::vector<UIComponent*> comp_queue;
+        // UIRender ui_render;
+        GLFWwindow *window;
+        Shader *defaultUIShader;
+        Shader *radiusShader;
+        Shader *btnShader;
     };
 }
 
