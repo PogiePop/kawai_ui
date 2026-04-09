@@ -5,7 +5,8 @@
 #include <map>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-
+#include <ft2build.h>
+#include <freetype/freetype.h>
 
 namespace Kawai
 {
@@ -30,10 +31,13 @@ namespace Kawai
 
             Character GetCharacter(char c) const;
             uint32_t GetFontSize() const { return m_FontSize; }
+            FT_Face GetFontFace() const { return m_Face; }
         private:
             std::map<char, Character>m_Characters;//char->字符纹理的映射集合
             uint32_t m_FontSize = 0;
             bool m_Loaded = false;
+            FT_Library m_FT = nullptr;
+            FT_Face m_Face = nullptr;
     };
 }
 

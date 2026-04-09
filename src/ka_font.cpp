@@ -1,8 +1,7 @@
 #include <glad/glad.h>
 #include <ka_font>
 #include <print>
-#include <ft2build.h>
-#include <freetype/freetype.h>
+
 
 namespace Kawai
 {
@@ -75,12 +74,14 @@ namespace Kawai
             m_Characters[c] = ch;
         }
 
-        FT_Done_Face(face);
-        FT_Done_FreeType(ft);
+        //FT_Done_Face(face);
+        //FT_Done_FreeType(ft);
 
         m_FontSize = fontSize;
         m_Loaded = true;
         std::println("字体加载成功!!!");
+        m_Face = face;
+        m_FT = ft;
         return true;
     }
 
@@ -91,6 +92,16 @@ namespace Kawai
         for (auto &ch : m_Characters)
             glDeleteTextures(1, &ch.second.tex_ID);
         m_Characters.clear();
+        if (m_Face)
+        {
+            FT_Done_Face(m_Face);
+            m_Face = nullptr;
+        }
+        if (m_FT)
+        {
+            FT_Done_FreeType(m_FT);
+            m_FT = nullptr;
+        }
         m_Loaded = false;
     }
 

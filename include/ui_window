@@ -60,7 +60,10 @@ namespace Kawai
                 comp->SetShader(this->btnShader);
                 break;
             case Text:
+            {
                 ((UIText*)comp)->SetFontShader(this->textShader);
+                comp->SetShader(this->defaultUIShader);
+            }  
                 break;
             default:
                 break;

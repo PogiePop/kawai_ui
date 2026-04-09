@@ -289,6 +289,7 @@ namespace Kawai
             
         private:
             Shader* m_FontShader = nullptr;
+            Mesh m_FontMesh;
             Font* m_Font  = nullptr;
             glm::vec4 color = white;
             glm::vec4 bgColor = green;

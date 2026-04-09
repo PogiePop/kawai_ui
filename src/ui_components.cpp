@@ -228,21 +228,37 @@ namespace Kawai
         float contentBottom = world.y + m_bottomSpacing;
         auto totalH = GetTotalLineHeight(baseScale);
         float startY = CalculateAlignY(totalH);
+        //std::println("startY:{}", startY);
         glm::mat4 proj = glm::ortho(
             0.0f, (float)GetScreenWidth(),
             0.0f, (float)GetScreenHeight()
         );
+        //绘制边框
+        ui_shader->use();
+        ui_shader->SetMat4("model", glm::translate(glm::mat4(1.0f), { world.x, world.y, 0.0f }));
+        ui_shader->SetMat4("pro", proj);
+        ui_shader->SetVec4("color", color_black);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        
+        UIRender::GetInstance().DrawElements(
+            GL_TRIANGLES,
+            ui_mesh.vao,
+            ui_mesh.indices.size()
+        );
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
         m_FontShader->use();
         m_FontShader->SetMat4("pro", proj);
         m_FontShader->SetVec4("textColor", color);
 
-        //std::println("{}, {}", startY, m_bottomSpacing);
+        std::println("bottomSpacing={}, totalH={}, contentY={}", m_bottomSpacing, totalH, m_ContentSize.y);
         for (int i = 0; i < m_lines.size(); i++)
         {
             auto& line = m_lines[i];
             auto lineMetrics = GetLineMetrics(line, baseScale);
             float lineW = lineMetrics.x;
-            float lineH = GetLineHeight();
+            float lineH = GetLineHeight(baseScale);
 
             float penX = world.x + CalculateAlignX(lineW);
             float penY = world.y + startY - i * (lineH + m_lineSpacing);
@@ -252,7 +268,8 @@ namespace Kawai
 
     void UIText::InitMesh()
     {
-        ui_mesh = CreateUnitQuad();
+         m_FontMesh = CreateUnitQuad();
+         ui_mesh = CreateUIRectMesh(0, 0, w, h);
         CalculateFitFontSize();
         float scale = (float)m_FitFontSize / m_Font->GetFontSize();
 
@@ -402,15 +419,24 @@ namespace Kawai
 
     float UIText::GetLineHeight(float scale)
     {
-        if (!m_Font || m_Text.empty())return 0.0f;
-        Character ch = m_Font->GetCharacter('H');
-        return ch.empty() ? 0.0f : ch.size.y * scale;
+        if (!m_Font) return 0.0f;
+
+        // FreeType 行高（baseline -> baseline）
+        float lineHeight = m_Font->GetFontFace()->size->metrics.height / 64.0f;
+
+        return lineHeight * scale;
     }
 
     float UIText::GetTotalLineHeight(float scale)
     {
-        if (!m_Font || m_Text.empty())return 0.0f;
-        return m_lines.size() * GetLineHeight(scale) + (m_lines.size() - 1) * m_lineSpacing;
+        if (!m_Font) return 0.0f;
+
+        size_t lineCount = m_lines.size();
+        if (lineCount == 0) return 0.0f;
+
+        float lineHeight = GetLineHeight(scale);
+
+        return lineCount * lineHeight + (lineCount - 1) * m_lineSpacing * scale;
     }
 
     void UIText::SplitTextIntoLines(float scale)
@@ -471,7 +497,7 @@ namespace Kawai
 
     float UIText::CalculateAlignY(float totalH)
     {
-        float contentBottom = m_bottomSpacing;
+        float contentTop = m_bottomSpacing;
 
         switch (m_Align)
         {
@@ -479,22 +505,22 @@ namespace Kawai
         case Align::BOTTOM_LEFT:
         case Align::BOTTOM_CENTER:
         case Align::BOTTOM_RIGHT:
-            return contentBottom;
+            return contentTop + totalH;
 
             // 居中：底部 + (内容高度 - 文本总高度)/2
         case Align::MIDDLE_LEFT:
         case Align::CENTER:
         case Align::MIDDLE_RIGHT:
-            return contentBottom + (m_ContentSize.y - totalH) * 0.5f;
+            return contentTop + (m_ContentSize.y - totalH) * 0.5f + totalH;
 
             // 顶部对齐：底部 + (内容高度 - 文本总高度)
         case Align::TOP_LEFT:
         case Align::TOP_CENTER:
         case Align::TOP_RIGHT:
-            return contentBottom + (m_ContentSize.y - totalH);
+            return contentTop + m_ContentSize.y;
 
         default:
-            return contentBottom;
+            return contentTop;
         }
     }
 
@@ -506,7 +532,7 @@ namespace Kawai
             char c = line[i];
             auto ch = m_Font->GetCharacter(c);
             if (!ch.tex_ID) continue;
-
+            //std::println("{}", y);
             
             
             float xpos = penX + ch.bearing.x * scale;
@@ -523,8 +549,8 @@ namespace Kawai
             glBindTexture(GL_TEXTURE_2D, ch.tex_ID);
             UIRender::GetInstance().DrawElements(
                 GL_TRIANGLES,
-                ui_mesh.vao,
-                ui_mesh.indices.size());
+                m_FontMesh.vao,
+                m_FontMesh.indices.size());
 
             penX += (ch.advance >> 6) * scale;
             if (i != line.size() - 1) penX += m_letterSpacing * scale;
