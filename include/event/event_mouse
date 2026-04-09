@@ -35,7 +35,7 @@ namespace Kawai
         public:
             //按下的按键
             int button;
-            virtual ~MouseButtonEvent() = 0;
+            virtual ~MouseButtonEvent() = default;
     };
 
     class MouseButtonPressEvent : public MouseButtonEvent

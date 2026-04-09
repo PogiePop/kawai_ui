@@ -6,7 +6,11 @@
 
 namespace Kawai
 {
-    //暂时不加入纹理
+
+    class Font;
+    enum Align;
+    
+    // 暂时不加入纹理
     struct Vertex
     {
         glm::vec2 position;
@@ -16,26 +20,30 @@ namespace Kawai
 
     class Mesh
     {
-        public:
-            Mesh() = default;
-            Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices)
-            :vertices(vertices),indices(indices)
-            {
-                init(vertices, indices);
-            }
-            
-            
-            GLuint vao, vbo, ebo;
-            std::vector<Vertex> vertices;
-            std::vector<GLuint> indices;
-        private:
-            void init(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices);
+    public:
+        Mesh() {
+            glGenVertexArrays(1, &vao);
+            glGenBuffers(1, &vbo);
+            glGenBuffers(1, &ebo);
+        }
+        Mesh(const std::vector<Vertex> &vertices, const std::vector<GLuint> &indices)
+            : vertices(vertices), indices(indices)
+        {
+            init(vertices, indices);
+        }
+
+        GLuint vao, vbo, ebo;
+        std::vector<Vertex> vertices;
+        std::vector<GLuint> indices;
+
+    private:
+        void init(const std::vector<Vertex> &vertices, const std::vector<GLuint> &indices);
     };
 
     Mesh CreateUIRectMesh(float x, float y, float w, float h);
 
-    void ModifyUIRectMesh(Mesh& mesh, float x, float y, float w, float h);
+    void ModifyUIRectMesh(Mesh &mesh, float x, float y, float w, float h);
+    Mesh CreateUnitQuad();
 }
-
 
 #endif

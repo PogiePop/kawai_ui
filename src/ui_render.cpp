@@ -6,17 +6,16 @@ namespace Kawai
     void UIRender::init(int width, int height)
     {
         this->screenWidth = width;
-        this->screenHeight =height;
+        this->screenHeight = height;
         aspect = screenWidth / screenHeight;
 
-        //开启透明混合
+        // 开启透明混合
         glEnable(GL_BLEND);
         // src * src_alpha + other * (1 - src_alpha)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
-
-    void UIRender::SetWindow(UIWindow* window)
+    void UIRender::SetWindow(UIWindow *window)
     {
         this->m_Window = window;
     }
@@ -34,4 +33,6 @@ namespace Kawai
         glDrawElements(mode, indexCount, GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     }
+
+    
 }

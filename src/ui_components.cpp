@@ -8,6 +8,7 @@
 #include <event/event_dispatch>
 #include <event/event_ui>
 #include <event/event_mouse>
+#include <xutility>
 
 namespace Kawai
 {
@@ -140,21 +141,27 @@ namespace Kawai
                                             {
             //判断是否在控件内
             bool inside = IsPointInside((float)e.x, (float)e.y);
+        
+
             if(inside && !focused)
             {
                 focused = true;
                 UIFocusEvent fe;
+                
                 //如果设置了聚焦函数
                 //if(focus)(*focus)(fe);
+
             }
             else if(!inside && focused)
             {
                 focused = false;
                 UIBlurEvent be;
+                
                 //如果设置了失焦函数
                 //if(blur)(*blur)(be);
             }
             return inside; });
+
         return e.handle;
     }
 
@@ -170,22 +177,362 @@ namespace Kawai
                 focused = true;
                 state = Hover;
                 UIFocusEvent fe;
+                std::println("hover!!");
                 //如果设置了聚焦函数
-                if(focus)(*focus)(fe);
+                if(focus)focus(fe);
             }
             else if(!inside && focused)
             {
                 focused = false;
                 state = Common;
                 UIBlurEvent be;
+                std::println("blur!!");
                 //如果设置了失焦函数
-                if(blur)(*blur)(be);
+                if(blur)blur(be);
             }
             return inside; });
+
+        dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent &e)
+                                                   {
+            if(focused)
+            {
+                state = Click;
+                if(click)click();
+                std::println("click!!");
+            }
+            return focused; });
+
+        dispatcher.Dispatch<MouseButtonReleaseEvent>([this](MouseButtonReleaseEvent &e)
+                                                     {
+            if(focused)
+            {
+                state = Hover;
+                std::println("Release!!");
+            }
+            return focused; });
+
         return e.handle;
+    }
+
+    bool UIText::OnEvent(Event &e)
+    {
+        return false;
+    }
+
+    void UIText::render()
+    {
+        if (!visible || m_Text.empty() || !m_Font) return;
+
+        glm::vec2 world = GetWorldPos();
+        float baseScale = (float)m_FitFontSize / this->m_Font->GetFontSize();
+        float contentBottom = world.y + m_bottomSpacing;
+        auto totalH = GetTotalLineHeight(baseScale);
+        float startY = CalculateAlignY(totalH);
+        glm::mat4 proj = glm::ortho(
+            0.0f, (float)GetScreenWidth(),
+            0.0f, (float)GetScreenHeight()
+        );
+        m_FontShader->use();
+        m_FontShader->SetMat4("pro", proj);
+        m_FontShader->SetVec4("textColor", color);
+
+        //std::println("{}, {}", startY, m_bottomSpacing);
+        for (int i = 0; i < m_lines.size(); i++)
+        {
+            auto& line = m_lines[i];
+            auto lineMetrics = GetLineMetrics(line, baseScale);
+            float lineW = lineMetrics.x;
+            float lineH = GetLineHeight();
+
+            float penX = world.x + CalculateAlignX(lineW);
+            float penY = world.y + startY - i * (lineH + m_lineSpacing);
+            DrawLine(penX, penY, line, baseScale);
+        }
+    }
+
+    void UIText::InitMesh()
+    {
+        ui_mesh = CreateUnitQuad();
+        CalculateFitFontSize();
+        float scale = (float)m_FitFontSize / m_Font->GetFontSize();
+
+        SplitTextIntoLines(scale); // ✅ 最终一次
+
+        std::println("当前字体大小:{}", m_FitFontSize);
+    }
+
+    void UIText::CalculateFitFontSize()
+    {
+        for (uint32_t sz = m_FontSize; sz > 0; sz--)
+        { 
+            float scale = (float)sz / this->m_Font->GetFontSize();
+            SplitTextIntoLines(scale);
+            float totalH = GetTotalLineHeight(scale);
+            float totalW = GetLineMetrics(m_lines[0], scale).x;
+            if (totalH <= m_ContentSize.y && totalW <= m_ContentSize.x)
+            {
+                m_FitFontSize = sz;
+                return;
+            }
+        }
+    }
+
+    void UIText::UpdateInnerSpacing()
+    {
+        // 总可用区域 = 组件大小
+        float totalW = w;
+        float totalH = h;
+
+        // 内容区域（文本实际占用的宽高，已经计算好）
+        float contentW = m_ContentSize.x;
+        float contentH = m_ContentSize.y;
+
+        // 剩余空间
+        float freeW = totalW - contentW;
+        float freeH = totalH - contentH;
+
+        
+
+        switch (m_Align)
+        {
+            // ==================== 顶部 ====================
+        case Align::TOP_LEFT:
+            m_leftSpacing = 0.0f;
+            m_rightSpacing = freeW;
+            m_topSpacing = 0.0f;
+            m_bottomSpacing = freeH;
+            break;
+
+        case Align::TOP_CENTER:
+            m_leftSpacing = freeW * 0.5f;
+            m_rightSpacing = freeW * 0.5f;
+            m_topSpacing = 0.0f;
+            m_bottomSpacing = freeH;
+            break;
+
+        case Align::TOP_RIGHT:
+            m_leftSpacing = freeW;
+            m_rightSpacing = 0.0f;
+            m_topSpacing = 0.0f;
+            m_bottomSpacing = freeH;
+            break;
+
+            // ==================== 中间 ====================
+        case Align::MIDDLE_LEFT:
+            m_leftSpacing = 0.0f;
+            m_rightSpacing = freeW;
+            m_topSpacing = freeH * 0.5f;
+            m_bottomSpacing = freeH * 0.5f;
+            break;
+
+        case Align::CENTER:
+            m_leftSpacing = freeW * 0.5f;
+            m_rightSpacing = freeW * 0.5f;
+            m_topSpacing = freeH * 0.5f;
+            m_bottomSpacing = freeH * 0.5f;
+            break;
+
+        case Align::MIDDLE_RIGHT:
+            m_leftSpacing = freeW;
+            m_rightSpacing = 0.0f;
+            m_topSpacing = freeH * 0.5f;
+            m_bottomSpacing = freeH * 0.5f;
+            break;
+
+            // ==================== 底部 ====================
+        case Align::BOTTOM_LEFT:
+            m_leftSpacing = 0.0f;
+            m_rightSpacing = freeW;
+            m_topSpacing = freeH;
+            m_bottomSpacing = 0.0f;
+            break;
+
+        case Align::BOTTOM_CENTER:
+            m_leftSpacing = freeW * 0.5f;
+            m_rightSpacing = freeW * 0.5f;
+            m_topSpacing = freeH;
+            m_bottomSpacing = 0.0f;
+            break;
+
+        case Align::BOTTOM_RIGHT:
+            m_leftSpacing = freeW;
+            m_rightSpacing = 0.0f;
+            m_topSpacing = freeH;
+            m_bottomSpacing = 0.0f;
+            break;
+
+        default:
+            // 默认居中
+            m_leftSpacing = m_rightSpacing = freeW * 0.5f;
+            m_topSpacing = m_bottomSpacing = freeH * 0.5f;
+            break;
+        }
+    }
+
+    glm::vec2 UIText::GetLineMetrics(const std::string& line, float scale)
+    {
+        if (!m_Font || line.empty()) return { 0, 0 };
+
+        float penX = 0.0f;
+        float firstBearingX = 0;
+        float maxBearingY = 0;
+
+        for (size_t i = 0; i < line.size(); i++)
+        {
+            auto ch = m_Font->GetCharacter(line[i]);
+            if (ch.empty()) continue;
+
+            // 记录第一个字符的 bearing.x（左边突出）
+            if (i == 0) firstBearingX = ch.bearing.x * scale;
+
+            // 记录整行最高的 bearing.y
+            maxBearingY = std::max(maxBearingY, ch.bearing.y * scale);
+
+            // 累加步进（advance 不含任何 bearing）
+            penX += (ch.advance >> 6) * scale;
+            if (i != line.size() - 1) penX += m_letterSpacing;
+        }
+
+        // ✅ 核心：advance 不包含 bearing.x，必须手动补偿突出
+        float width = penX + firstBearingX;
+        float height = maxBearingY;
+
+        return { width, height };
+    }
+
+    float UIText::GetLineHeight(float scale)
+    {
+        if (!m_Font || m_Text.empty())return 0.0f;
+        Character ch = m_Font->GetCharacter('H');
+        return ch.empty() ? 0.0f : ch.size.y * scale;
+    }
+
+    float UIText::GetTotalLineHeight(float scale)
+    {
+        if (!m_Font || m_Text.empty())return 0.0f;
+        return m_lines.size() * GetLineHeight(scale) + (m_lines.size() - 1) * m_lineSpacing;
+    }
+
+    void UIText::SplitTextIntoLines(float scale)
+    {
+        if (!m_Font || m_Text.empty())return;
+        m_lines.clear();
+        std::string line = "";
+        float currentWidth = 0.0f;
+        for (auto c : m_Text)
+        {
+            Character ch = m_Font->GetCharacter(c);
+            if (ch.empty())continue;
+            float wx = (ch.advance >> 6) * scale;
+            if (currentWidth + wx <= m_ContentSize.x)
+            {
+                currentWidth += wx;
+                line += c;
+            }
+            else
+            {
+                m_lines.push_back(line);
+                currentWidth = wx;
+                line = c;
+            }
+        }
+
+        if (!line.empty())
+            m_lines.push_back(line);
+        
+    }
+
+
+    // 水平对齐（自动包含 leftSpacing）
+    float UIText::CalculateAlignX(float lineW)
+    {
+        float contentX = m_leftSpacing;
+
+        switch (m_Align)
+        {
+        case Align::TOP_LEFT:
+        case Align::MIDDLE_LEFT:
+        case Align::BOTTOM_LEFT:
+            return contentX;
+
+        case Align::TOP_CENTER:
+        case Align::CENTER:
+        case Align::BOTTOM_CENTER:
+            return contentX + (m_ContentSize.x - lineW) * 0.5f;
+
+        case Align::TOP_RIGHT:
+        case Align::MIDDLE_RIGHT:
+        case Align::BOTTOM_RIGHT:
+            return contentX + m_ContentSize.x - lineW;
+
+        default: return contentX;
+        }
+    }
+
+    float UIText::CalculateAlignY(float totalH)
+    {
+        float contentBottom = m_bottomSpacing;
+
+        switch (m_Align)
+        {
+            // 底部对齐：文字贴着内容区域底部
+        case Align::BOTTOM_LEFT:
+        case Align::BOTTOM_CENTER:
+        case Align::BOTTOM_RIGHT:
+            return contentBottom;
+
+            // 居中：底部 + (内容高度 - 文本总高度)/2
+        case Align::MIDDLE_LEFT:
+        case Align::CENTER:
+        case Align::MIDDLE_RIGHT:
+            return contentBottom + (m_ContentSize.y - totalH) * 0.5f;
+
+            // 顶部对齐：底部 + (内容高度 - 文本总高度)
+        case Align::TOP_LEFT:
+        case Align::TOP_CENTER:
+        case Align::TOP_RIGHT:
+            return contentBottom + (m_ContentSize.y - totalH);
+
+        default:
+            return contentBottom;
+        }
+    }
+
+    void UIText::DrawLine(float x, float y, const std::string& line, float scale)
+    {
+        float penX = x;
+        for (int i = 0; i < line.size(); i++)
+        {
+            char c = line[i];
+            auto ch = m_Font->GetCharacter(c);
+            if (!ch.tex_ID) continue;
+
+            
+            
+            float xpos = penX + ch.bearing.x * scale;
+            float ypos = y - ch.bearing.y * scale;
+            //std::println("x={}, y={}", xpos, ypos);
+            float w = ch.size.x * scale;
+            float h = ch.size.y * scale;
+
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, { xpos, ypos, 0 });
+            model = glm::scale(model, { w, h, 1 });
+
+            m_FontShader->SetMat4("model", model);
+            glBindTexture(GL_TEXTURE_2D, ch.tex_ID);
+            UIRender::GetInstance().DrawElements(
+                GL_TRIANGLES,
+                ui_mesh.vao,
+                ui_mesh.indices.size());
+
+            penX += (ch.advance >> 6) * scale;
+            if (i != line.size() - 1) penX += m_letterSpacing * scale;
+        }
     }
 
     template void UIComponent::AddChildComponent<UIRect>(UIRect *);
     template void UIComponent::AddChildComponent<UIPanel>(UIPanel *);
     template void UIComponent::AddChildComponent<UIButton>(UIButton *);
+    template void UIComponent::AddChildComponent<UIText>(UIText *);
 }

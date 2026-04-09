@@ -1,0 +1,40 @@
+#ifndef KAWAI_FONT
+#define KAWAI_FONT
+
+#include <string>
+#include <map>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+
+
+namespace Kawai
+{
+    //存储字符纹理
+    struct Character
+    {
+        uint32_t tex_ID = 0;
+        glm::ivec2 size;
+        glm::ivec2 bearing;
+        uint32_t advance;
+        bool empty()const { return tex_ID == 0; }
+    };
+
+    class Font
+    {
+        public:
+            Font() = default;
+            ~Font();
+
+            bool load(const std::string& fontPath, uint32_t fontSize);
+            void cleanup();
+
+            Character GetCharacter(char c) const;
+            uint32_t GetFontSize() const { return m_FontSize; }
+        private:
+            std::map<char, Character>m_Characters;//char->字符纹理的映射集合
+            uint32_t m_FontSize = 0;
+            bool m_Loaded = false;
+    };
+}
+
+#endif

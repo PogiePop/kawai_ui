@@ -3,11 +3,12 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
-
+#include <string>
 
 namespace Kawai
 {
     class UIWindow;
+    class Font;
     class UIRender
     {
         public:
@@ -20,6 +21,7 @@ namespace Kawai
             void SetScW(int w){ this->screenWidth = w;}
             void SetScH(int h){ this->screenHeight = h; }
             void SetWindow(UIWindow* window);
+            
         private:
             UIRender() = default;
             int screenWidth, screenHeight;

@@ -5,7 +5,7 @@
 #include <event/event>
 #include <event/event_window>
 #include <event/event_mouse>
-#include <stack>
+#include <queue>
 namespace Kawai
 {
     void UIWindow::init(int w, int h, const std::string &title)
@@ -48,6 +48,18 @@ namespace Kawai
             OnEvent(mme);
         };
 
+        m_MSPressCall = [this](GLFWwindow* , int btn, int action, int mods)
+        {
+            MouseButtonPressEvent mspe(btn);
+            OnEvent(mspe);
+        };
+
+        m_MSReleaseCall = [this](GLFWwindow* , int btn, int action, int mods)
+        {
+            MouseButtonReleaseEvent msre(btn);
+            OnEvent(msre);
+        };
+
         // 设置回调
         glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height)
                                        {
@@ -70,6 +82,14 @@ namespace Kawai
             {
                 if(self->m_CursorCall)self->m_CursorCall(window, x, y);
             } });
+        glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods){
+            UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
+            if(self)
+            {
+                if(action == GLFW_PRESS && self->m_MSPressCall)self->m_MSPressCall(window, button, action, mods);
+                if(action == GLFW_RELEASE && self->m_MSReleaseCall)self->m_MSReleaseCall(window, button, action, mods);
+            }
+        });
     }
 
     void UIWindow::OnUpdate()
@@ -82,7 +102,7 @@ namespace Kawai
         }
     }
 
-    //TODO: 还有点问题
+   
     void UIWindow::OnRender()
     {
         glClearColor(color.r, color.g, color.b, color.a);
@@ -101,69 +121,44 @@ namespace Kawai
             needResize = false;
         }
 
-        //构建优先队列
-        std::vector<UIComponent*>queue;
-        for (auto &comp : ui_components)
-            CollectComponent(comp, queue);
-
-        // 构建事件队列
+        // 构建队列
         if (needSort || uiNumChange)
         {
+            ui_renderQ.clear();
             ui_eventQ.clear();
-            std::stack<std::pair<UIComponent *, bool>> st;
+            // 构建渲染队列
+            std::queue<UIComponent *> ui_queue;
+            for (auto &comp : ui_components)
+                ui_queue.push(comp);
 
-            // 根节点逆序入栈 → 后添加的根优先处理
-            for (auto it = ui_components.rbegin(); it != ui_components.rend(); ++it)
+            while (!ui_queue.empty())
             {
-                st.push({*it, false});
+                auto q = ui_queue.front();
+                ui_queue.pop();
+                ui_renderQ.push_back(q);
+                for (auto &child : q->childrens)
+                    ui_queue.push(child);
             }
 
-            while (!st.empty())
-            {
-                auto [comp, visited] = st.top();
-                st.pop();
+            //首先按照priority排序，然后按照添加顺序
+            std::sort(ui_renderQ.begin(), ui_renderQ.end(), [](UIComponent* a, UIComponent* b){
+                if(a->priority != b->priority)
+                    return a->priority < b->priority;
+                return a->number < b->number;
+            });
 
-                if (!visited)
-                {
-                    // 父节点先压回去（等子节点处理完再来处理自己）
-                    st.push({comp, true});
-
-                    // 子节点逆序压栈 → 最右边的子节点最先弹出
-                    for (auto it = comp->childrens.rbegin(); it != comp->childrens.rend(); ++it)
-                    {
-                        st.push({*it, false});
-                    }
-                }
-                else
-                {
-                    // 所有子节点都已经入队了，才入队自己
-                    ui_eventQ.push_back(comp);
-                }
-            }
-
-            // 关键：这里绝对不要 reverse！
-            // std::reverse(ui_eventQ.begin(), ui_eventQ.end());  // 删掉！
-
-            // 稳定排序：优先级高的在前，同优先级保持“子在前，父在后”
-            std::stable_sort(ui_eventQ.begin(), ui_eventQ.end(), [](UIComponent *a, UIComponent *b)
-                             { return a->priority > b->priority; });
+            ui_eventQ.assign(ui_renderQ.rbegin(), ui_renderQ.rend());
 
             needSort = false;
             uiNumChange = false;
         }
 
-        //排序
-        std::sort(queue.begin(), queue.end(), [](UIComponent* comp1, UIComponent* comp2)
-        { return comp1->priority < comp2->priority; });
-
-        // 渲染
-       for(auto& comp : queue)
-       {
-            comp->renderID = instanceID++;
-            comp->render();
-       }
-       instanceID = 0;
-            
+        for(auto& r : ui_renderQ)
+        {
+            r->render();
+            r->renderID = instanceID++;
+        }
+        instanceID = 0;
 
         glfwSwapBuffers(window);
     }
@@ -190,6 +185,9 @@ namespace Kawai
             case Button:
                 child->SetShader(this->btnShader);
                 break;
+            case Text:
+                ((UIText*)child)->SetFontShader(this->textShader);
+                break;
             default:
                 break;
             }
@@ -204,7 +202,7 @@ namespace Kawai
         for (auto &comp : ui_eventQ)
             if (comp->OnEvent(e))
             {
-                std::println("事件被{}处理, type = {}", comp->renderID, comp->GetTypeName());
+                //std::println("事件被{}处理, type = {}", comp->renderID, comp->GetTypeName());
                 e.handle = true;
                 break;
             }
@@ -220,6 +218,8 @@ namespace Kawai
         }
         // e.handle = true;
     }
+
+   
 
     UIWindow::~UIWindow()
     {
