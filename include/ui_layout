@@ -1,0 +1,28 @@
+#pragma once
+
+#include<glm/glm.hpp>
+#include<vector>
+
+
+
+namespace Kawai
+{
+	class UIComponent;
+	class UILayout
+	{
+	public:
+		UILayout() = default;
+		virtual ~UILayout() = default;
+
+		virtual void ApplyLayout(const std::vector<UIComponent*>& roots, int windowW, int windowH) = 0;
+	};
+
+	//Ãªµã²¼¾Ö
+	class UIAnchorLayout : UILayout
+	{
+	public:
+		void ApplyLayout(const std::vector<UIComponent*>& roots, int windowW, int windowH)override;
+	private:
+		void UpdateComponent(UIComponent* comp, float parentW, float parentH);
+	};
+}

@@ -8,7 +8,6 @@ if(MSVC)
     # UTF-8 编码
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
     add_compile_options("$<$<COMPILE_LANGUAGE:C>:/utf-8>")
-
     # 禁用警告（不影响功能，大幅加速解析）
     add_compile_options(/W0)
 
@@ -48,16 +47,17 @@ set(FREETYPE ${CMAKE_SOURCE_DIR}/submodules/freetype)
 # ======================================
 add_library(glad STATIC EXCLUDE_FROM_ALL
     ${GLAD}/src/glad.c
-)
+ )
 target_include_directories(glad PRIVATE ${GLAD}/include)
 
 add_library(kawai STATIC
     ${SRC}/ka_font.cpp
     ${SRC}/mesh.cpp
-    ${SRC}/ui_components.cpp
-    ${SRC}/ui_render.cpp
+    ${SRC}/shader.cpp  
+    ${SRC}/ui_layout.cpp
+    ${SRC}/ui_component.cpp
     ${SRC}/ui_window.cpp
-    ${SRC}/shader.cpp
+    ${SRC}/ui_render.cpp
 )
 
 # ======================================
@@ -80,13 +80,15 @@ link_directories(
 # 可执行文件
 add_executable(${PROJECT_NAME} main.cpp)
 
-# 链接
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    glfw3
+set(LIB glfw3
     opengl32
     glad
     kawai
-    freetype
+    freetype)
+
+# 链接
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${LIB}
 )
 
 # ======================================
@@ -109,3 +111,10 @@ add_custom_command(
     COMMENT "Copy fonts (fast incremental)..."
     VERBATIM
 )
+
+
+enable_testing()
+add_executable(layout_test test/layout_test.cpp)
+add_test(layout_test layout_test)
+
+target_link_libraries(layout_test PRIVATE ${LIB})

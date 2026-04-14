@@ -3,6 +3,7 @@
 #include <ui_render>
 #include <ui_component>
 #include <map>
+#include<ui_layout>
 
 namespace Kawai
 {
@@ -10,7 +11,7 @@ namespace Kawai
     {
         int order;
     };
-
+    
     class UIWindow
     {
     public:
@@ -25,6 +26,10 @@ namespace Kawai
             Font* det = new Font();
             det->load("fonts/BRADHITC.TTF", 64);
             ui_fonts["default"] = det;
+            static UIAnchorLayout defaultAnchorLayout;
+            SetLayout((UILayout*) ( & defaultAnchorLayout));
+            m_Canvas = new UICanvas(0, 0, w, h);
+            m_Canvas->m_Window = this;
         }
 
         using WindowFrameSizeCallback = std::function<void(GLFWwindow*, int, int)>;
@@ -42,32 +47,18 @@ namespace Kawai
 
         void SetWindowColor(const glm::vec4 &color) { this->color = color; }
 
+        void SetLayout(UILayout* layout);
+        void ApplyLayout();
+
+        static glm::vec2 GetNativeMonitorVideoSize();
+
         std::map<std::string, Font*>& GetFontResources(){ return this->ui_fonts; }
 
         template <std::derived_from<UIComponent> T>
         void AddComponent(T *comp)
         {
             comp->InitMesh();
-            switch (comp->GetComponentType())
-            {
-            case Rect:
-                comp->SetShader(this->defaultUIShader);
-                break;
-            case Panel:
-                comp->SetShader(this->radiusShader);
-                break;
-            case Button:
-                comp->SetShader(this->btnShader);
-                break;
-            case Text:
-            {
-                ((UIText*)comp)->SetFontShader(this->textShader);
-                comp->SetShader(this->defaultUIShader);
-            }  
-                break;
-            default:
-                break;
-            }
+            UpdateComponentShader(comp);
             comp->AttachToWindow(this);
             this->ui_components.push_back(comp);
             AddComponentCount();
@@ -84,10 +75,14 @@ namespace Kawai
             uiNumChange = true;
             this->componentNum++;
         }
+
+        UIComponent* GetCanvas() { return m_Canvas; }
+
         Shader* textShader;
     private:
-        void UpdateComponent(UIComponent *comp);
+        void UpdateComponent();
         void CollectComponent(UIComponent *comp, std::vector<UIComponent *> &queue);
+        void UpdateComponentShader(UIComponent* comp);
 
     private:
         void init(int w, int h, const std::string &title);
@@ -98,12 +93,14 @@ namespace Kawai
         std::vector<UIComponent* >ui_eventQ;//按照覆盖层遍历，越上面的ui越容易捕获事件
         std::vector<UIComponent* >ui_renderQ;//渲染队列
         std::map<std::string, Font*>ui_fonts;
+        UICanvas* m_Canvas;
         // std::vector<UIComponent*> comp_queue;
         // UIRender ui_render;
         GLFWwindow *window;
         Shader *defaultUIShader;
         Shader *radiusShader;
         Shader *btnShader;
+        UILayout* m_Layout = nullptr;
         
         WindowFrameSizeCallback m_SizeCall;
         CursorMoveCallback m_CursorCall;

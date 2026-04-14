@@ -12,7 +12,8 @@
 
 namespace Kawai
 {
-
+    class Shader;
+    class Mesh;
     class Event;
     class UIFocusEvent;
     class UIBlurEvent;
@@ -22,7 +23,8 @@ namespace Kawai
         Rect,
         Panel,
         Button,
-        Text
+        Text,
+        Canvas
     };
 
 #define COMPONENT_TYPE_DEF(type)                                                        \
@@ -33,75 +35,43 @@ namespace Kawai
     class UIComponent
     {
     public:
-        UIComponent(float x, float y, int w, int h, int priority = 0, bool visible = true)
+        UIComponent(float x, float y, float w, float h, int priority = 0, bool visible = true)
             : x(x), y(y), w(w), h(h), priority(priority), visible(visible)
         {
             TransformToNDCP();
         }
 
-        virtual void InitMesh()
-        {
-            ui_mesh = CreateUIRectMesh(0, 0, w, h);
-        }
+        virtual void InitMesh();
+        
 
-        void TransformToNDCP()
-        {
-            glm::vec2 point = toNDC(glm::vec2{x, y});
-            float width = toNDCSizeHorizontal(w);
-            float height = toNDCSizeVertical(h);
-            this->ndc_x = point.x;
-            this->ndc_y = point.y;
-            this->ndc_w = width;
-            this->ndc_h = height;
-        }
+        void TransformToNDCP();
+        
 
         virtual ComponentType GetComponentType() const = 0;
         virtual const char *GetTypeName() const = 0;
         virtual void render() = 0;
-        virtual bool IsPointInside(float x, float y)
-        {
-            glm::vec2 worldPos = GetWorldPos();
-            int screenH = GetScreenHeight();
-
-            // 关键：把 GLFW 鼠标 Y 翻转成 UI 坐标系 Y
-            float uiMouseY = screenH - y;
-            return (x > worldPos.x && x < worldPos.x + w) &&
-                   (uiMouseY > worldPos.y && uiMouseY < worldPos.y + h);
-        }
+        virtual bool IsPointInside(float x, float y);
+        
 
         void SetPriority(int order);
 
         virtual ~UIComponent() = default;
-        glm::vec2 toNDC(const glm::vec2 &p)
-        {
-            glm::vec2 res;
-            res.x = p.x / GetScreenWidth() * 2 - 1;
-            res.y = p.y / GetScreenHeight() * 2 - 1;
-            return res;
-        }
-        float toNDCSizeHorizontal(float x)
-        {
-            return x / (float)GetScreenWidth() * 2.0f;
-        }
-        float toNDCSizeVertical(float y)
-        {
-            return y / (float)GetScreenHeight() * 2.0f;
-        }
-        int GetScreenWidth() const { return UIRender::GetInstance().GetScreenWidth(); }
-        int GetScreenHeight() const { return UIRender::GetInstance().GetScreenHeight(); }
+        glm::vec2 toNDC(const glm::vec2& p);
+        
+        float toNDCSizeHorizontal(float x);
+        
+        float toNDCSizeVertical(float y);
+        
+        inline int GetScreenWidth() const;
+        inline int GetScreenHeight() const;
 
         void SetShader(Shader *sd)
         {
             ui_shader = sd;
         }
 
-        void UpdateComponentSize()
-        {
-            TransformToNDCP();
-            ModifyUIRectMesh(this->ui_mesh, x, y, w, h);
-            for (auto &child : childrens)
-                child->UpdateComponentSize();
-        }
+        void UpdateComponentSize();
+        
 
         template <std::derived_from<UIComponent> T>
         void AddChildComponent(T *child);
@@ -128,7 +98,7 @@ namespace Kawai
         virtual bool OnEvent(Event &event) = 0;
 
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
-        int w, h;
+        float w, h;
         int priority;
         bool visible;
         Shader *ui_shader = nullptr;
@@ -142,6 +112,41 @@ namespace Kawai
         GLuint number;
         bool focused = false;
         int renderID;
+
+        //ui缩放（适配分辨率）
+        float ui_scale = 1.0f;
+        glm::vec2 scaleXY = { 1.0f, 1.0f };
+        struct UIAnchor
+        {
+            glm::vec2 min = { 0.0f, 0.0f }; // 左下锚点 (0~1)
+            glm::vec2 max = { 0.0f, 0.0f }; // 右上锚点 (0~1)
+        }anchor;
+
+        struct UIPivot
+        {
+            glm::vec2 pivot = { 0.0f, 0.0f }; // 自身中心点 (0~1)
+        }pivot;
+
+        struct UIOffset
+        {
+            float left = 0;
+            float right = 0;
+            float top = 0;
+            float bottom = 0;
+        }offset;
+
+
+        void center()
+        {
+            anchor.min = { 0.5f, 0.5f };
+            anchor.max = { 0.5f, 0.5f };
+
+            pivot.pivot = { 0.5f, 0.5f };
+
+            offset.left = 0;
+            offset.bottom = 0;
+
+        }
     };
 
     // rect
@@ -286,6 +291,8 @@ namespace Kawai
             void SplitTextIntoLines(float scale);
             void UpdateInnerSpacing();
             void DrawLine(float x, float y, const std::string& line, float scale);
+            void SetFontColor(const glm::vec4& color) { this->color = color; }
+            void SetFontAlign(const Align& align) { this->m_Align = align; UpdateInnerSpacing(); }
             
         private:
             Shader* m_FontShader = nullptr;
@@ -309,6 +316,20 @@ namespace Kawai
             glm::vec2 m_ContentSize;
 
             
+    };
+
+    class UICanvas : public UIComponent
+    {
+    public:
+        UICanvas() = default;
+        UICanvas(float x, float y, float w, float h) :
+        UIComponent(x, y, w, h)
+        {
+            priority = INT_MIN;
+        }
+        COMPONENT_TYPE_DEF(Canvas)
+        void render() {}
+        bool OnEvent(Event& e) { return true; }
     };
 }
 

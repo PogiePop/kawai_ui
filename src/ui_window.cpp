@@ -1,3 +1,5 @@
+#include "ui_window"
+#include "ui_window"
 #include <ui_window>
 #include <ka_basic>
 #include <algorithm>
@@ -5,7 +7,10 @@
 #include <event/event>
 #include <event/event_window>
 #include <event/event_mouse>
+#include <event/event_ui>
 #include <queue>
+#include <Windows.h>
+
 namespace Kawai
 {
     void UIWindow::init(int w, int h, const std::string &title)
@@ -40,6 +45,10 @@ namespace Kawai
             // 事件处理
             WindowResizeEvent wre(width, height);
             OnEvent(wre);
+
+            //UI resize;
+            UISizeEvent uise(width, height);
+            OnEvent(uise);
         };
 
         m_CursorCall = [this](GLFWwindow *, double x, double y)
@@ -77,6 +86,7 @@ namespace Kawai
 
         glfwSetCursorPosCallback(window, [](GLFWwindow *window, double x, double y)
                                  {
+               // std::println("{}X{}", x, y);
             UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
             if(self)
             {
@@ -90,6 +100,31 @@ namespace Kawai
                 if(action == GLFW_RELEASE && self->m_MSReleaseCall)self->m_MSReleaseCall(window, button, action, mods);
             }
         });
+
+        glfwSetWindowContentScaleCallback(window,
+            [](GLFWwindow* window, float xscale, float yscale)
+            {
+                std::println("DPI scale: {}, {}", xscale, yscale);
+            });
+    }
+
+    // 完全抛弃 GLFW 回调的脏数据！自己算！
+    double getRealMousePos(GLFWwindow* window, double& outX, double& outY)
+    {
+        // 1. 获取鼠标在【整个屏幕】上的坐标
+        double screenMouseX, screenMouseY;
+        glfwGetCursorPos(window, &screenMouseX, &screenMouseY);
+
+        // 2. 获取窗口【在屏幕上的左上角坐标】
+        int winPosX, winPosY;
+        glfwGetWindowPos(window, &winPosX, &winPosY);
+
+        // 3. 自己算：客户区坐标 = 屏幕坐标 - 窗口坐标
+        // 这是 100% 正确、永远不漂移、不受 GLFW BUG 影响
+        outX = screenMouseX - winPosX;
+        outY = screenMouseY - winPosY;
+
+        return true;
     }
 
     void UIWindow::OnUpdate()
@@ -107,19 +142,9 @@ namespace Kawai
     {
         glClearColor(color.r, color.g, color.b, color.a);
         glClear(GL_COLOR_BUFFER_BIT);
-        // 更新组件
-        for (auto &comp : ui_components)
-        {
-            if (comp->childChange)
-                UpdateComponent(comp);
-        }
+        
 
-        if (needResize)
-        {
-            for (auto &comp : ui_components)
-                comp->UpdateComponentSize();
-            needResize = false;
-        }
+        
 
         // 构建队列
         if (needSort || uiNumChange)
@@ -153,6 +178,25 @@ namespace Kawai
             uiNumChange = false;
         }
 
+        // 更新组件
+        for (auto& comp : ui_renderQ)
+        {
+            if (comp->childChange)
+            {
+                //ApplyLayout();
+                UpdateComponent();
+                break;
+            }
+        }
+
+        if (needResize)
+        {
+            //std::println("resize ui");
+            for (auto& comp : ui_renderQ)comp->UpdateComponentSize();
+            //ApplyLayout();
+            needResize = false;
+        }
+
         for(auto& r : ui_renderQ)
         {
             r->render();
@@ -170,30 +214,37 @@ namespace Kawai
             CollectComponent(child, queue);
     }
 
-    void UIWindow::UpdateComponent(UIComponent *comp)
+    void UIWindow::UpdateComponentShader(UIComponent* comp)
     {
-        for (auto &child : comp->childrens)
+        switch (comp->GetComponentType())
         {
-            switch (child->GetComponentType())
-            {
-            case Rect:
-                child->SetShader(this->defaultUIShader);
-                break;
-            case Panel:
-                child->SetShader(this->radiusShader);
-                break;
-            case Button:
-                child->SetShader(this->btnShader);
-                break;
-            case Text:
-                ((UIText*)child)->SetFontShader(this->textShader);
-                break;
-            default:
-                break;
-            }
-            UpdateComponent(child);
+        case Rect:
+            comp->SetShader(this->defaultUIShader);
+            break;
+        case Panel:
+            comp->SetShader(this->radiusShader);
+            break;
+        case Button:
+            comp->SetShader(this->btnShader);
+            break;
+        case Text:
+        {
+            ((UIText*)comp)->SetFontShader(this->textShader);
+            comp->SetShader(this->defaultUIShader);
         }
-        comp->childChange = false;
+        break;
+        default:
+            break;
+        }
+    }
+
+    void UIWindow::UpdateComponent()
+    {
+        for (auto& comp : ui_renderQ)
+        {
+            UpdateComponentShader(comp);
+            comp->childChange = false;
+        }
     }
 
     void UIWindow::OnEvent(Event &e)
@@ -232,5 +283,29 @@ namespace Kawai
         if (this->window)
             glfwDestroyWindow(window);
     }
+
+    void UIWindow::SetLayout(UILayout* layout)
+    {
+        m_Layout = layout;
+    }
+
+    void UIWindow::ApplyLayout()
+    {
+        if (!m_Layout)return;
+        std::println("apply()");
+        int w, h;
+        glfwGetWindowSize(window, &w, &h);
+        m_Layout->ApplyLayout(ui_components, w, h);
+    }
+
+    glm::vec2 UIWindow::GetNativeMonitorVideoSize()
+    {
+        auto monitor = glfwGetPrimaryMonitor();
+        int x, y, ww, hh;
+        glfwGetMonitorWorkarea(monitor, &x, &y, &ww, &hh);
+        return {  ww, hh };
+    }
+
+
 
 }

@@ -1,15 +1,16 @@
-#ifndef KAWAI_MESH
+﻿#ifndef KAWAI_MESH
 #define KAWAI_MESH
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <shader>
+#include <print>
 
 namespace Kawai
 {
 
     class Font;
     enum Align;
-    
+
     // 暂时不加入纹理
     struct Vertex
     {
@@ -22,27 +23,37 @@ namespace Kawai
     {
     public:
         Mesh() {
+            if (glfwGetCurrentContext() == nullptr)
+            {
+                //std::println("当前上下文为空，无法创建mesh");
+                return;
+            }
             glGenVertexArrays(1, &vao);
             glGenBuffers(1, &vbo);
             glGenBuffers(1, &ebo);
         }
-        Mesh(const std::vector<Vertex> &vertices, const std::vector<GLuint> &indices)
+        Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices)
             : vertices(vertices), indices(indices)
         {
+            if (glfwGetCurrentContext() == nullptr)
+            {
+                //std::println("当前上下文为空，无法创建mesh");
+                return;
+            }
             init(vertices, indices);
         }
 
-        GLuint vao, vbo, ebo;
+        GLuint vao = 0, vbo = 0, ebo = 0;
         std::vector<Vertex> vertices;
         std::vector<GLuint> indices;
 
     private:
-        void init(const std::vector<Vertex> &vertices, const std::vector<GLuint> &indices);
+        void init(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices);
     };
 
     Mesh CreateUIRectMesh(float x, float y, float w, float h);
 
-    void ModifyUIRectMesh(Mesh &mesh, float x, float y, float w, float h);
+    void ModifyUIRectMesh(Mesh& mesh, float x, float y, float w, float h);
     Mesh CreateUnitQuad();
 }
 

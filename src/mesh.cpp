@@ -1,9 +1,9 @@
 #include <mesh>
 #include <print>
 #include <ui_render>
-#include <ui_component>
 #include <ka_font>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 namespace Kawai
 {
 
@@ -63,6 +63,10 @@ namespace Kawai
         v[1].position = {x, y + h};
         v[2].position = {x + w, y + h};
         v[3].position = {x + w, y};
+        glBindVertexArray(mesh.vao);
+        glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, v.size() * sizeof(Vertex), v.data());
+        glBindVertexArray(0);
     }
 
 }

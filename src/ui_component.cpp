@@ -1,3 +1,7 @@
+﻿#include "ui_component"
+#include "ui_component"
+#include "ui_component"
+#include "ui_component"
 #include <ui_component>
 #include <print>
 #include <ui_window>
@@ -12,6 +16,52 @@
 
 namespace Kawai
 {
+
+    void UIComponent::InitMesh()
+    {
+        //设置缩放(水平)
+        auto mode = UIWindow::GetNativeMonitorVideoSize();
+        this->ui_scale = GetScreenWidth() / mode.x;
+        this->scaleXY.x = this->ui_scale;
+        this->scaleXY.y = GetScreenHeight() / mode.y;
+        ui_mesh = CreateUIRectMesh(0, 0, w * ui_scale, h * ui_scale);
+        //if (number == )
+        std::println("{}", number);
+            std::println("{}x{}", GetWorldPos().x, GetWorldPos().y);
+    }
+
+    bool UIComponent::IsPointInside(float x, float y)
+    {
+        glm::vec2 worldPos = GetWorldPos();
+        int screenH = GetScreenHeight();
+
+        // 关键：把 GLFW 鼠标 Y 翻转成 UI 坐标系 Y
+        float uiMouseY = screenH - y;
+        //std::println("{}X{}", scaleXY.x, scaleXY.y);
+        /*if(number == 6)
+        std::println("{}X{}, {}-{}", x, uiMouseY, worldPos.y * scaleXY.y, (worldPos.y + h) * scaleXY.y);*/
+        return x > worldPos.x && x < worldPos.x + w * scaleXY.x &&
+            uiMouseY > worldPos.y  && uiMouseY < worldPos.y + h * ui_scale;
+    }
+
+    void UIComponent::TransformToNDCP()
+    {
+        glm::vec2 point = toNDC(glm::vec2{ x, y });
+        float width = toNDCSizeHorizontal(w);
+        float height = toNDCSizeVertical(h);
+        this->ndc_x = point.x;
+        this->ndc_y = point.y;
+        this->ndc_w = width;
+        this->ndc_h = height;
+    }
+
+    void UIComponent::UpdateComponentSize()
+    {
+        TransformToNDCP();
+        ModifyUIRectMesh(this->ui_mesh, x * ui_scale, y * ui_scale, w * ui_scale, h * ui_scale);
+        for (auto& child : childrens)
+            child->UpdateComponentSize();
+    }
 
     void UIRect::render()
     {
@@ -34,14 +84,43 @@ namespace Kawai
         glm::mat4 pro = glm::ortho(0.0f, (float)GetScreenWidth(), 0.0f, (float)GetScreenHeight());
         this->ui_shader->SetMat4("pro", pro);
         glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos, 0.0f));
+
         this->ui_shader->SetMat4("model", model);
         UIRender::GetInstance().DrawElements(GL_TRIANGLES, this->ui_mesh.vao, this->ui_mesh.indices.size());
+    }
+
+    int UIComponent::GetScreenWidth()const
+    {
+        return UIRender::GetInstance().GetScreenWidth();
+    }
+
+    int UIComponent::GetScreenHeight()const
+    {
+        return UIRender::GetInstance().GetScreenHeight();
     }
 
     void UIComponent::SetPriority(int order)
     {
         this->priority = order;
         m_Window->needSort = true;
+    }
+
+    glm::vec2 UIComponent::toNDC(const glm::vec2& p)
+    {
+        glm::vec2 res;
+        res.x = p.x / GetScreenWidth() * 2 - 1;
+        res.y = p.y / GetScreenHeight() * 2 - 1;
+        return res;
+    }
+
+    float UIComponent::toNDCSizeHorizontal(float x)
+    {
+        return x / (float)GetScreenWidth() * 2.0f;
+    }
+
+    float UIComponent::toNDCSizeVertical(float y)
+    {
+        return y / (float)GetScreenHeight() * 2.0f;
     }
 
     void UIButton::update(float deltatime)
@@ -88,135 +167,192 @@ namespace Kawai
     }
 
     template <std::derived_from<UIComponent> T>
-    void UIComponent::AddChildComponent(T *child)
+    void UIComponent::AddChildComponent(T* child)
     {
-        if (!this->m_Window)
-            return;
         child->InitMesh();
         child->parent = this;
         this->childrens.push_back(child);
         childChange = true;
         if (this->m_Window)
+        {
             child->AttachToWindow(this->m_Window);
-        this->m_Window->AddComponentCount();
+            this->m_Window->AddComponentCount();
+        }
     }
 
-    void UIComponent::AttachToWindow(UIWindow *window)
+    void UIComponent::AttachToWindow(UIWindow* window)
     {
         this->m_Window = window;
-        this->number = this->m_Window->componentNum;
-        for (auto &child : childrens)
+
+        // 2. 安全判断：没有父节点 → 绑定到主画布
+        /*if (!parent && window != nullptr)
+        {
+            parent = window->GetCanvas();
+        }*/
+
+        // 3. 设置组件编号
+        if (window)
+        {
+            this->number = window->componentNum;
+        }
+
+        // 4. 递归子节点
+        for (auto& child : childrens)
+        {
             child->AttachToWindow(window);
+        }
     }
 
-    bool UIRect::OnEvent(Event &e)
+    bool UIRect::OnEvent(Event& e)
     {
         EventDispatch dispatcher(e);
-        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent &e)
-                                            {
-            //判断是否在控件内
-            bool inside = IsPointInside((float)e.x, (float)e.y);
-            if(inside && !focused)
+        //事件是否拦截
+        //bool IsIntercept = true;
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent& e)
             {
-                focused = true;
-                UIFocusEvent fe;
-                //如果设置了聚焦函数
-                //if(focus)(*focus)(fe);
-            }
-            else if(!inside && focused)
-            {
-                focused = false;
-                UIBlurEvent be;
-                //如果设置了失焦函数
-                //if(blur)(*blur)(be);
-            }
-            return inside; });
+                //判断是否在控件内
+                bool inside = IsPointInside((float)e.x, (float)e.y);
+                if (inside && !focused)
+                {
+                    focused = true;
+                    UIFocusEvent fe;
+                    //如果设置了聚焦函数
+                    //if(focus)(*focus)(fe);
+                }
+                else if (!inside && focused)
+                {
+                    focused = false;
+                    UIBlurEvent be;
+                    //如果设置了失焦函数
+                    //if(blur)(*blur)(be);
+                }
+                return inside; });
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            this->scaleXY.x = this->ui_scale;
+            this->scaleXY.y = GetScreenHeight() / mode.y;
+            //UISizeEvent不会拦截
+            return false;
+        });
         return e.handle;
     }
 
-    bool UIPanel::OnEvent(Event &e)
+    bool UIPanel::OnEvent(Event& e)
     {
         EventDispatch dispatcher(e);
-        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent &e)
-                                            {
-            //判断是否在控件内
-            bool inside = IsPointInside((float)e.x, (float)e.y);
-        
-
-            if(inside && !focused)
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent& e)
             {
-                focused = true;
-                UIFocusEvent fe;
-                
-                //如果设置了聚焦函数
-                //if(focus)(*focus)(fe);
+                //判断是否在控件内
+                bool inside = IsPointInside((float)e.x, (float)e.y);
 
-            }
-            else if(!inside && focused)
-            {
-                focused = false;
-                UIBlurEvent be;
-                
-                //如果设置了失焦函数
-                //if(blur)(*blur)(be);
-            }
-            return inside; });
+                //std::println("{}X{}", e.x, e.y);
+                if (inside && !focused)
+                {
+                    focused = true;
+                    UIFocusEvent fe;
 
-        return e.handle;
-    }
+                    //如果设置了聚焦函数
+                    //if(focus)(*focus)(fe);
 
-    bool UIButton::OnEvent(Event &e)
-    {
-        EventDispatch dispatcher(e);
-        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent &e)
-                                            {
-            //判断是否在控件内
-            bool inside = IsPointInside((float)e.x, (float)e.y);
-            if(inside && !focused)
-            {
-                focused = true;
-                state = Hover;
-                UIFocusEvent fe;
-                std::println("hover!!");
-                //如果设置了聚焦函数
-                if(focus)focus(fe);
-            }
-            else if(!inside && focused)
-            {
-                focused = false;
-                state = Common;
-                UIBlurEvent be;
-                std::println("blur!!");
-                //如果设置了失焦函数
-                if(blur)blur(be);
-            }
-            return inside; });
+                }
+                else if (!inside && focused)
+                {
+                    focused = false;
+                    UIBlurEvent be;
 
-        dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent &e)
-                                                   {
-            if(focused)
-            {
-                state = Click;
-                if(click)click();
-                std::println("click!!");
-            }
-            return focused; });
+                    //如果设置了失焦函数
+                    //if(blur)(*blur)(be);
+                }
+                return inside; });
 
-        dispatcher.Dispatch<MouseButtonReleaseEvent>([this](MouseButtonReleaseEvent &e)
-                                                     {
-            if(focused)
-            {
-                state = Hover;
-                std::println("Release!!");
-            }
-            return focused; });
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            this->scaleXY.x = this->ui_scale;
+            this->scaleXY.y = GetScreenHeight() / mode.y;
+            //UISizeEvent不会拦截
+            return false;
+            });
 
         return e.handle;
     }
 
-    bool UIText::OnEvent(Event &e)
+    bool UIButton::OnEvent(Event& e)
     {
-        return false;
+        EventDispatch dispatcher(e);
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent& e)
+            {
+                //判断是否在控件内
+                bool inside = IsPointInside((float)e.x, (float)e.y);
+                //std::println("{}X{}", e.x, e.y);
+                if (inside && !focused)
+                {
+                    focused = true;
+                    state = Hover;
+                    UIFocusEvent fe;
+                    std::println("hover!!");
+                    //如果设置了聚焦函数
+                    if (focus)focus(fe);
+                }
+                else if (!inside && focused)
+                {
+                    focused = false;
+                    state = Common;
+                    UIBlurEvent be;
+                    std::println("blur!!");
+                    //如果设置了失焦函数
+                    if (blur)blur(be);
+                }
+                return inside; });
+
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            this->scaleXY.x = this->ui_scale;
+            this->scaleXY.y = GetScreenHeight() / mode.y;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            //UISizeEvent不会拦截
+            return false;
+            });
+
+        dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent& e)
+            {
+                if (focused)
+                {
+                    state = Click;
+                    if (click)click();
+                    std::println("click!!");
+                }
+                return focused; });
+
+        dispatcher.Dispatch<MouseButtonReleaseEvent>([this](MouseButtonReleaseEvent& e)
+            {
+                if (focused)
+                {
+                    state = Hover;
+                    std::println("Release!!");
+                }
+                return focused; });
+
+        return e.handle;
+    }
+
+    bool UIText::OnEvent(Event& e)
+    {
+        //EventDispatch dispatcher(e);
+        //dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+        //    auto mode = UIWindow::GetNativeMonitorVideoSize();
+        //    this->ui_scale = (float)GetScreenWidth() / mode.x;
+        //    ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+        //    this->scaleXY.x = this->ui_scale;
+        //    this->scaleXY.y = GetScreenHeight() / mode.y;
+        //    //UISizeEvent不会拦截
+        //    return false;
+        //    });
+        return e.handle;
     }
 
     void UIText::render()
@@ -233,7 +369,7 @@ namespace Kawai
             0.0f, (float)GetScreenWidth(),
             0.0f, (float)GetScreenHeight()
         );
-        //绘制边框
+        ////绘制边框
         ui_shader->use();
         ui_shader->SetMat4("model", glm::translate(glm::mat4(1.0f), { world.x, world.y, 0.0f }));
         ui_shader->SetMat4("pro", proj);
@@ -252,7 +388,7 @@ namespace Kawai
         m_FontShader->SetMat4("pro", proj);
         m_FontShader->SetVec4("textColor", color);
 
-        std::println("bottomSpacing={}, totalH={}, contentY={}", m_bottomSpacing, totalH, m_ContentSize.y);
+        //std::println("bottomSpacing={}, totalH={}, contentY={}", m_bottomSpacing, totalH, m_ContentSize.y);
         for (int i = 0; i < m_lines.size(); i++)
         {
             auto& line = m_lines[i];
@@ -268,8 +404,8 @@ namespace Kawai
 
     void UIText::InitMesh()
     {
-         m_FontMesh = CreateUnitQuad();
-         ui_mesh = CreateUIRectMesh(0, 0, w, h);
+        m_FontMesh = CreateUnitQuad();
+        ui_mesh = CreateUIRectMesh(0, 0, w, h);
         CalculateFitFontSize();
         float scale = (float)m_FitFontSize / m_Font->GetFontSize();
 
@@ -281,7 +417,7 @@ namespace Kawai
     void UIText::CalculateFitFontSize()
     {
         for (uint32_t sz = m_FontSize; sz > 0; sz--)
-        { 
+        {
             float scale = (float)sz / this->m_Font->GetFontSize();
             SplitTextIntoLines(scale);
             float totalH = GetTotalLineHeight(scale);
@@ -308,7 +444,7 @@ namespace Kawai
         float freeW = totalW - contentW;
         float freeH = totalH - contentH;
 
-        
+
 
         switch (m_Align)
         {
@@ -465,7 +601,7 @@ namespace Kawai
 
         if (!line.empty())
             m_lines.push_back(line);
-        
+
     }
 
 
@@ -533,8 +669,8 @@ namespace Kawai
             auto ch = m_Font->GetCharacter(c);
             if (!ch.tex_ID) continue;
             //std::println("{}", y);
-            
-            
+
+
             float xpos = penX + ch.bearing.x * scale;
             float ypos = y - ch.bearing.y * scale;
             //std::println("x={}, y={}", xpos, ypos);
@@ -557,8 +693,9 @@ namespace Kawai
         }
     }
 
-    template void UIComponent::AddChildComponent<UIRect>(UIRect *);
-    template void UIComponent::AddChildComponent<UIPanel>(UIPanel *);
-    template void UIComponent::AddChildComponent<UIButton>(UIButton *);
-    template void UIComponent::AddChildComponent<UIText>(UIText *);
+    template void UIComponent::AddChildComponent<UIRect>(UIRect*);
+    template void UIComponent::AddChildComponent<UIPanel>(UIPanel*);
+    template void UIComponent::AddChildComponent<UIButton>(UIButton*);
+    template void UIComponent::AddChildComponent<UIText>(UIText*);
+    template void UIComponent::AddChildComponent<UICanvas>(UICanvas*);
 }
