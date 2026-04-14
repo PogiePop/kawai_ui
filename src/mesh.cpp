@@ -57,12 +57,16 @@ namespace Kawai
 
     void ModifyUIRectMesh(Mesh &mesh, float x, float y, float w, float h)
     {
-        // std::println("({}, {}, {}, {})", x, y, w, h);
+        std::println("({}, {}, {}, {})", x, y, w, h);
         auto &v = mesh.vertices;
         v[0].position = {x, y};
         v[1].position = {x, y + h};
         v[2].position = {x + w, y + h};
         v[3].position = {x + w, y};
+        glBindVertexArray(mesh.vao);
+        glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, v.size() * sizeof(Vertex), v.data());
+        glBindVertexArray(0);
     }
 
 }

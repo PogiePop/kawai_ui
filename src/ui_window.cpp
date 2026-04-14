@@ -6,6 +6,7 @@
 #include <event/event_window>
 #include <event/event_mouse>
 #include <queue>
+#include <event/event_ui>
 namespace Kawai
 {
     void UIWindow::init(int w, int h, const std::string &title)
@@ -40,6 +41,9 @@ namespace Kawai
             // 事件处理
             WindowResizeEvent wre(width, height);
             OnEvent(wre);
+
+            UISizeEvent uise(width, height);
+            OnEvent(uise);
         };
 
         m_CursorCall = [this](GLFWwindow *, double x, double y)
@@ -116,8 +120,6 @@ namespace Kawai
 
         if (needResize)
         {
-            for (auto &comp : ui_components)
-                comp->UpdateComponentSize();
             needResize = false;
         }
 
@@ -231,6 +233,13 @@ namespace Kawai
         delete defaultUIShader;
         if (this->window)
             glfwDestroyWindow(window);
+    }
+
+    glm::vec2 UIWindow::GetNativeMonitorVideoSize()
+    {
+        auto monitor = glfwGetPrimaryMonitor();
+        auto mode = glfwGetVideoMode(monitor);
+        return { mode->width, mode->height };
     }
 
 }

@@ -12,7 +12,6 @@
 
 namespace Kawai
 {
-
     class Event;
     class UIFocusEvent;
     class UIBlurEvent;
@@ -39,109 +38,66 @@ namespace Kawai
             TransformToNDCP();
         }
 
-        virtual void InitMesh()
-        {
-            ui_mesh = CreateUIRectMesh(0, 0, w, h);
-        }
+        virtual void InitMesh();
+        
 
-        void TransformToNDCP()
-        {
-            glm::vec2 point = toNDC(glm::vec2{x, y});
-            float width = toNDCSizeHorizontal(w);
-            float height = toNDCSizeVertical(h);
-            this->ndc_x = point.x;
-            this->ndc_y = point.y;
-            this->ndc_w = width;
-            this->ndc_h = height;
-        }
+        void TransformToNDCP();
+        
 
         virtual ComponentType GetComponentType() const = 0;
-        virtual const char *GetTypeName() const = 0;
+        virtual const char* GetTypeName() const = 0;
         virtual void render() = 0;
-        virtual bool IsPointInside(float x, float y)
-        {
-            glm::vec2 worldPos = GetWorldPos();
-            int screenH = GetScreenHeight();
-
-            // 关键：把 GLFW 鼠标 Y 翻转成 UI 坐标系 Y
-            float uiMouseY = screenH - y;
-            return (x > worldPos.x && x < worldPos.x + w) &&
-                   (uiMouseY > worldPos.y && uiMouseY < worldPos.y + h);
-        }
+        virtual bool IsPointInside(float x, float y);
+        
 
         void SetPriority(int order);
 
         virtual ~UIComponent() = default;
-        glm::vec2 toNDC(const glm::vec2 &p)
-        {
-            glm::vec2 res;
-            res.x = p.x / GetScreenWidth() * 2 - 1;
-            res.y = p.y / GetScreenHeight() * 2 - 1;
-            return res;
-        }
-        float toNDCSizeHorizontal(float x)
-        {
-            return x / (float)GetScreenWidth() * 2.0f;
-        }
-        float toNDCSizeVertical(float y)
-        {
-            return y / (float)GetScreenHeight() * 2.0f;
-        }
+        glm::vec2 toNDC(const glm::vec2& p);
+        
+        float toNDCSizeHorizontal(float x);
+        
+        float toNDCSizeVertical(float y);
+        
         int GetScreenWidth() const { return UIRender::GetInstance().GetScreenWidth(); }
         int GetScreenHeight() const { return UIRender::GetInstance().GetScreenHeight(); }
 
-        void SetShader(Shader *sd)
+        void SetShader(Shader* sd)
         {
             ui_shader = sd;
         }
 
-        void UpdateComponentSize()
-        {
-            TransformToNDCP();
-            ModifyUIRectMesh(this->ui_mesh, x, y, w, h);
-            for (auto &child : childrens)
-                child->UpdateComponentSize();
-        }
+        void UpdateComponentSize();
+        
 
         template <std::derived_from<UIComponent> T>
-        void AddChildComponent(T *child);
+        void AddChildComponent(T* child);
 
-        void AttachToWindow(UIWindow *window);
+        void AttachToWindow(UIWindow* window);
 
-        glm::vec2 GetWorldPos() const
-        {
-            glm::vec2 worldPos = {x, y};
-
-            // 递归向上累加所有父节点坐标
-            const UIComponent *p = this->parent;
-            while (p != nullptr)
-            {
-                worldPos.x += p->x;
-                worldPos.y += p->y;
-                p = p->parent;
-            }
-
-            return worldPos;
-        }
+        glm::vec2 GetWorldPos() const;
+        
 
         // 事件处理
-        virtual bool OnEvent(Event &event) = 0;
+        virtual bool OnEvent(Event& event) = 0;
 
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
         int w, h;
         int priority;
         bool visible;
-        Shader *ui_shader = nullptr;
+        Shader* ui_shader = nullptr;
         Mesh ui_mesh;
         // layout类还没写暂留
-        std::vector<UIComponent *> childrens;
-        UIComponent *parent = nullptr;
+        std::vector<UIComponent*> childrens;
+        UIComponent* parent = nullptr;
         bool childChange = false;
-        UIWindow *m_Window = nullptr;
+        UIWindow* m_Window = nullptr;
         std::string name;
         GLuint number;
         bool focused = false;
         int renderID;
+
+        float ui_scale = 1.0f;
     };
 
     // rect
@@ -153,9 +109,9 @@ namespace Kawai
         {
         }
         void render() override;
-        bool OnEvent(Event &event) override;
+        bool OnEvent(Event& event) override;
         COMPONENT_TYPE_DEF(Rect)
-        ~UIRect() = default;
+            ~UIRect() = default;
 
     private:
         glm::vec4 color;
@@ -166,16 +122,16 @@ namespace Kawai
     {
     public:
         UIPanel(float x, float y, int w, int h,
-                glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-                float radius = 50.0f)
+            glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+            float radius = 50.0f)
             : UIComponent(x, y, w, h), bgColor(color), radius(radius)
         {
             ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2.0f;
         }
-        bool OnEvent(Event &event) override;
+        bool OnEvent(Event& event) override;
         ~UIPanel() = default;
         COMPONENT_TYPE_DEF(Panel)
-        void render() override;
+            void render() override;
 
     private:
         glm::vec4 bgColor;
@@ -203,22 +159,22 @@ namespace Kawai
         ~UIButton() = default;
         COMPONENT_TYPE_DEF(Button)
 
-        void render() override;
-        bool OnEvent(Event &event) override;
+            void render() override;
+        bool OnEvent(Event& event) override;
 
         void update(float deltatime);
 
         using Onclick = std::function<void(void)>;
-        using OnBlur = std::function<void(UIBlurEvent &)>;
-        using OnFocus = std::function<void(UIFocusEvent &)>;
+        using OnBlur = std::function<void(UIBlurEvent&)>;
+        using OnFocus = std::function<void(UIFocusEvent&)>;
 
 
-        void SetOnclick(const Onclick& onclick){ this->click = onclick; } 
-        void SetOnFoucs(const OnFocus& onfoucs){ this->focus = onfoucs; }
-        void SetOnBlur(const OnBlur& onblur){ this->blur = onblur; }
-        void SetCommonColor(const glm::vec4& color){ this->commonColor = color; }
-        void SetHoverColor(const glm::vec4& color){ this->hoverColor = color; }
-        void SetClickColor(const glm::vec4& color){ this->clickColor = color; }
+        void SetOnclick(const Onclick& onclick) { this->click = onclick; }
+        void SetOnFoucs(const OnFocus& onfoucs) { this->focus = onfoucs; }
+        void SetOnBlur(const OnBlur& onblur) { this->blur = onblur; }
+        void SetCommonColor(const glm::vec4& color) { this->commonColor = color; }
+        void SetHoverColor(const glm::vec4& color) { this->hoverColor = color; }
+        void SetClickColor(const glm::vec4& color) { this->clickColor = color; }
 
     private:
         glm::vec4 commonColor = normal_btn_color;
@@ -227,9 +183,9 @@ namespace Kawai
         float radius, ndc_radius;
         ButtonStatus state = Common;
         bool enableShadow = true;
-        glm::vec2 shadowOffset = {0.02f, -0.02f};
+        glm::vec2 shadowOffset = { 0.02f, -0.02f };
         float shadowBlur = 0.04f;
-        glm::vec4 shadowColor = {0.0f, 0.0f, 0.0f, 0.3f};
+        glm::vec4 shadowColor = { 0.0f, 0.0f, 0.0f, 0.3f };
 
         glm::vec4 currentColor;
 
@@ -261,54 +217,55 @@ namespace Kawai
 
     class UIText : public UIComponent
     {
-        public:
-            COMPONENT_TYPE_DEF(Text)
-            UIText(float x, float y, int w, int h, Font* font, const std::string& text, Align align = CENTER, uint32_t fontsize = 16):
+    public:
+        COMPONENT_TYPE_DEF(Text)
+            UIText(float x, float y, int w, int h, Font* font, const std::string& text, Align align = CENTER, uint32_t fontsize = 16) :
             UIComponent(x, y, w, h), m_Font(font), m_FontSize(fontsize), m_Text(text), m_Align(align)
-            {
-                m_ContentSize = { 2 * (float)w / 3, 2 * (float)h / 3 };
-                UpdateInnerSpacing();
-            }
+        {
+            m_ContentSize = { 2 * (float)w * ui_scale / 3, 2 * (float)h / 3 * ui_scale };
+            UpdateInnerSpacing();
+        }
 
-            void render();
-            bool OnEvent(Event &event) override;
+        void render();
+        bool OnEvent(Event& event) override;
 
-            void InitMesh() override;
+        void InitMesh() override;
 
-            void SetFontShader(Shader* sd){ this->m_FontShader = sd; } 
+        void SetFontShader(Shader* sd) { this->m_FontShader = sd; }
 
-            void CalculateFitFontSize();
-            float CalculateAlignX(float lineW);
-            float CalculateAlignY(float totalH);
-            glm::vec2 GetLineMetrics(const std::string& line, float scale);
-            float GetLineHeight(float scale = 1.0f);
-            float GetTotalLineHeight(float scale = 1.0f);
-            void SplitTextIntoLines(float scale);
-            void UpdateInnerSpacing();
-            void DrawLine(float x, float y, const std::string& line, float scale);
-            
-        private:
-            Shader* m_FontShader = nullptr;
-            Mesh m_FontMesh;
-            Font* m_Font  = nullptr;
-            glm::vec4 color = white;
-            glm::vec4 bgColor = green;
-            uint32_t m_FontSize;
-            uint32_t m_FitFontSize;//适配后的字符大小
-            std::string m_Text;
-            Align m_Align;
-            float m_letterSpacing = 0.0f; //字符间距
-            float m_lineSpacing = 0.0f; //行间距
-            std::vector<std::string> m_lines; //存储每行字符串
+        void CalculateFitFontSize();
+        float CalculateAlignX(float lineW);
+        float CalculateAlignY(float totalH);
+        glm::vec2 GetLineMetrics(const std::string& line, float scale);
+        float GetLineHeight(float scale = 1.0f);
+        float GetTotalLineHeight(float scale = 1.0f);
+        void SplitTextIntoLines(float scale);
+        void UpdateInnerSpacing();
+        void DrawLine(float x, float y, const std::string& line, float scale);
+        void SetFontColor(const glm::vec4& color) { this->color = color; }
+        void SetFontAlign(const Align& align) { this->m_Align = align; UpdateInnerSpacing(); }
 
-            //内边距
-            float m_leftSpacing;
-            float m_rightSpacing;
-            float m_topSpacing;
-            float m_bottomSpacing;
-            glm::vec2 m_ContentSize;
+    private:
+        Shader* m_FontShader = nullptr;
+        Mesh m_FontMesh;
+        Font* m_Font = nullptr;
+        glm::vec4 color = white;
+        glm::vec4 bgColor = green;
+        uint32_t m_FontSize;
+        uint32_t m_FitFontSize;//适配后的字符大小
+        std::string m_Text;
+        Align m_Align;
+        float m_letterSpacing = 0.0f; //字符间距
+        float m_lineSpacing = 0.0f; //行间距
+        std::vector<std::string> m_lines; //存储每行字符串
 
-            
+        //内边距
+        float m_leftSpacing;
+        float m_rightSpacing;
+        float m_topSpacing;
+        float m_bottomSpacing;
+        glm::vec2 m_ContentSize;
+
     };
 }
 

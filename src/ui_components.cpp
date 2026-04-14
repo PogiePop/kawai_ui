@@ -13,6 +13,35 @@
 namespace Kawai
 {
 
+    bool UIComponent::IsPointInside(float x, float y)
+    {
+        glm::vec2 worldPos = GetWorldPos();
+        int screenH = GetScreenHeight();
+
+        // 关键：把 GLFW 鼠标 Y 翻转成 UI 坐标系 Y
+        float uiMouseY = screenH - y;
+        return (x > worldPos.x && x < worldPos.x + w * ui_scale) &&
+            (uiMouseY > worldPos.y && uiMouseY < worldPos.y + h * ui_scale);
+    }
+
+    void UIComponent::InitMesh()
+    {
+        auto mode = UIWindow::GetNativeMonitorVideoSize();
+        ui_scale = GetScreenWidth() / mode.x;
+        ui_mesh = CreateUIRectMesh(0, 0, w * ui_scale, h * ui_scale);
+    }
+
+    void UIComponent::TransformToNDCP()
+    {
+        glm::vec2 point = toNDC(glm::vec2{ x, y });
+        float width = toNDCSizeHorizontal(w);
+        float height = toNDCSizeVertical(h);
+        this->ndc_x = point.x;
+        this->ndc_y = point.y;
+        this->ndc_w = width;
+        this->ndc_h = height;
+    }
+
     void UIRect::render()
     {
         glm::vec2 worldPos = GetWorldPos();
@@ -42,6 +71,24 @@ namespace Kawai
     {
         this->priority = order;
         m_Window->needSort = true;
+    }
+
+    glm::vec2 UIComponent::toNDC(const glm::vec2& p)
+    {
+        glm::vec2 res;
+        res.x = p.x / GetScreenWidth() * 2 - 1;
+        res.y = p.y / GetScreenHeight() * 2 - 1;
+        return res;
+    }
+
+    float UIComponent::toNDCSizeHorizontal(float x)
+    {
+        return x / (float)GetScreenWidth() * 2.0f;
+    }
+
+    float UIComponent::toNDCSizeVertical(float y)
+    {
+        return y / (float)GetScreenHeight() * 2.0f;
     }
 
     void UIButton::update(float deltatime)
@@ -101,12 +148,37 @@ namespace Kawai
         this->m_Window->AddComponentCount();
     }
 
+    void UIComponent::UpdateComponentSize()
+    {
+        TransformToNDCP();
+        ModifyUIRectMesh(this->ui_mesh, x, y, w, h);
+        for (auto& child : childrens)
+            child->UpdateComponentSize();
+    }
+
     void UIComponent::AttachToWindow(UIWindow *window)
     {
+        if (!window)return;
         this->m_Window = window;
         this->number = this->m_Window->componentNum;
         for (auto &child : childrens)
             child->AttachToWindow(window);
+    }
+
+    glm::vec2 UIComponent::GetWorldPos() const
+    {
+        glm::vec2 worldPos = { x, y };
+
+        // 递归向上累加所有父节点坐标
+        const UIComponent* p = this->parent;
+        while (p != nullptr)
+        {
+            worldPos.x += p->x;
+            worldPos.y += p->y;
+            p = p->parent;
+        }
+
+        return worldPos;
     }
 
     bool UIRect::OnEvent(Event &e)
@@ -131,6 +203,13 @@ namespace Kawai
                 //if(blur)(*blur)(be);
             }
             return inside; });
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            //UISizeEvent不会拦截
+            return false;
+            });
         return e.handle;
     }
 
@@ -161,7 +240,13 @@ namespace Kawai
                 //if(blur)(*blur)(be);
             }
             return inside; });
-
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            //UISizeEvent不会拦截
+            return false;
+            });
         return e.handle;
     }
 
@@ -192,6 +277,14 @@ namespace Kawai
             }
             return inside; });
 
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            //UISizeEvent不会拦截
+            return false;
+            });
+
         dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent &e)
                                                    {
             if(focused)
@@ -214,8 +307,20 @@ namespace Kawai
         return e.handle;
     }
 
-    bool UIText::OnEvent(Event &e)
+    bool UIText::OnEvent(Event& e)
     {
+        EventDispatch dispatcher(e);
+        dispatcher.Dispatch<UISizeEvent>([&, this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            this->m_ContentSize *= ui_scale;
+            CalculateFitFontSize();
+            float scale = (float)m_FitFontSize / m_Font->GetFontSize();
+            SplitTextIntoLines(scale);
+            //UISizeEvent不会拦截
+            return false;
+            });
         return false;
     }
 
@@ -233,7 +338,7 @@ namespace Kawai
             0.0f, (float)GetScreenWidth(),
             0.0f, (float)GetScreenHeight()
         );
-        //绘制边框
+        ////绘制边框
         ui_shader->use();
         ui_shader->SetMat4("model", glm::translate(glm::mat4(1.0f), { world.x, world.y, 0.0f }));
         ui_shader->SetMat4("pro", proj);
@@ -252,7 +357,7 @@ namespace Kawai
         m_FontShader->SetMat4("pro", proj);
         m_FontShader->SetVec4("textColor", color);
 
-        std::println("bottomSpacing={}, totalH={}, contentY={}", m_bottomSpacing, totalH, m_ContentSize.y);
+        //std::println("bottomSpacing={}, totalH={}, contentY={}", m_bottomSpacing, totalH, m_ContentSize.y);
         for (int i = 0; i < m_lines.size(); i++)
         {
             auto& line = m_lines[i];
@@ -268,8 +373,8 @@ namespace Kawai
 
     void UIText::InitMesh()
     {
-         m_FontMesh = CreateUnitQuad();
-         ui_mesh = CreateUIRectMesh(0, 0, w, h);
+        m_FontMesh = CreateUnitQuad();
+        ui_mesh = CreateUIRectMesh(0, 0, w * ui_scale, h * ui_scale);
         CalculateFitFontSize();
         float scale = (float)m_FitFontSize / m_Font->GetFontSize();
 
@@ -281,7 +386,7 @@ namespace Kawai
     void UIText::CalculateFitFontSize()
     {
         for (uint32_t sz = m_FontSize; sz > 0; sz--)
-        { 
+        {
             float scale = (float)sz / this->m_Font->GetFontSize();
             SplitTextIntoLines(scale);
             float totalH = GetTotalLineHeight(scale);
@@ -308,7 +413,7 @@ namespace Kawai
         float freeW = totalW - contentW;
         float freeH = totalH - contentH;
 
-        
+
 
         switch (m_Align)
         {
@@ -465,7 +570,7 @@ namespace Kawai
 
         if (!line.empty())
             m_lines.push_back(line);
-        
+
     }
 
 
@@ -533,8 +638,8 @@ namespace Kawai
             auto ch = m_Font->GetCharacter(c);
             if (!ch.tex_ID) continue;
             //std::println("{}", y);
-            
-            
+
+
             float xpos = penX + ch.bearing.x * scale;
             float ypos = y - ch.bearing.y * scale;
             //std::println("x={}, y={}", xpos, ypos);

@@ -74,7 +74,7 @@ target_include_directories(kawai PUBLIC
 # 库目录
 link_directories(
     ${GLFW}/build/src/Debug
-    ${FREETYPE}/builds/Release
+    ${FREETYPE}/builds/Debug
 )
 
 # 可执行文件
@@ -86,7 +86,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     opengl32
     glad
     kawai
-    freetype
+    freetyped
 )
 
 # ======================================

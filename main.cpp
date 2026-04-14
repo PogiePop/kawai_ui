@@ -13,14 +13,16 @@ int main()
     Kawai::UIPanel* panel1 = new Kawai::UIPanel(0, 0, 400, 400, Kawai::color_black);
     Kawai::UIPanel* panel2 = new Kawai::UIPanel(50, 50, 100, 100, Kawai::color_magenta);
     Kawai::UIButton* btn1 = new Kawai::UIButton(0, 0, 60, 40);
+    Kawai::UIButton* btn2 = new Kawai::UIButton(50, 50, 60, 40);
     Kawai::UIPanel* panel3 = new Kawai::UIPanel(0, 0, 60, 40, Kawai::color_red);
     Kawai::UIText* txt1 = new Kawai::UIText(400, 300, 100, 200, _window.GetFontResources()["default"], "HelloKawaiui", Kawai::BOTTOM_CENTER, 24);
-   /* _window.AddComponent<Kawai::UIRect>(rect);
+    _window.AddComponent<Kawai::UIRect>(rect);
     _window.AddComponent<Kawai::UIPanel>(panel);
     panel->AddChildComponent<Kawai::UIPanel>(panel1);
     panel1->AddChildComponent<Kawai::UIPanel>(panel2);
     panel2->AddChildComponent<Kawai::UIButton>(btn1);
-    _window.AddComponent<Kawai::UIRect>(rect2);*/
+    _window.AddComponent<Kawai::UIRect>(rect2);
+    panel2->AddChildComponent<Kawai::UIButton>(btn2);
     _window.AddComponent<Kawai::UIText>(txt1);
     //Kawai::UIButton* btn2 = new Kawai::UIButton(60, 60, 50, 50);
     //panel2->AddChildComponent<Kawai::UIButton>(btn2);
@@ -28,6 +30,10 @@ int main()
     //btn1->SetOnclick([](){
     //    std::println("我是btn1");
     //});
+    int k = 0;
+    btn1->SetOnclick([&]() {
+        txt1->SetFontAlign((Kawai::Align(k++ % 9)));
+        });
 
     
     // panel2->AddChildComponent<Kawai::UIPanel>(panel3);

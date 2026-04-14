@@ -42,6 +42,8 @@ namespace Kawai
 
         void SetWindowColor(const glm::vec4 &color) { this->color = color; }
 
+        static glm::vec2 GetNativeMonitorVideoSize();
+
         std::map<std::string, Font*>& GetFontResources(){ return this->ui_fonts; }
 
         template <std::derived_from<UIComponent> T>
