@@ -15,7 +15,7 @@ int main()
     Kawai::UIButton* btn1 = new Kawai::UIButton(0, 0, 60, 40);
     Kawai::UIButton* btn2 = new Kawai::UIButton(50, 50, 60, 40);
     Kawai::UIPanel* panel3 = new Kawai::UIPanel(0, 0, 60, 40, Kawai::color_red);
-    Kawai::UIText* txt1 = new Kawai::UIText(400, 300, 100, 200, _window.GetFontResources()["default"], "HelloKawaiui", Kawai::BOTTOM_CENTER, 24);
+    Kawai::UIText* txt1 = new Kawai::UIText(400, 300, 100, 200, _window.GetFontResources()["default"], "HelloKawaiui", Kawai::TOP_LEFT, 24);
     _window.AddComponent<Kawai::UIRect>(rect);
     _window.AddComponent<Kawai::UIPanel>(panel);
     panel->AddChildComponent<Kawai::UIPanel>(panel1);

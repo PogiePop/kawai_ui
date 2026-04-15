@@ -222,8 +222,8 @@ namespace Kawai
             UIText(float x, float y, int w, int h, Font* font, const std::string& text, Align align = CENTER, uint32_t fontsize = 16) :
             UIComponent(x, y, w, h), m_Font(font), m_FontSize(fontsize), m_Text(text), m_Align(align)
         {
-            m_ContentSize = { 2 * (float)w * ui_scale / 3, 2 * (float)h / 3 * ui_scale };
-            UpdateInnerSpacing();
+            //m_ContentSize = { 2 * (float)w * ui_scale / 3, 2 * (float)h * ui_scale / 3 };
+            //std::println("init:{}X{}", m_ContentSize.x, m_ContentSize.y);
         }
 
         void render();

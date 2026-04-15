@@ -314,10 +314,12 @@ namespace Kawai
             auto mode = UIWindow::GetNativeMonitorVideoSize();
             this->ui_scale = (float)GetScreenWidth() / mode.x;
             ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
-            this->m_ContentSize *= ui_scale;
+            m_ContentSize = { 2 * (float)w * ui_scale / 3, 2 * (float)h * ui_scale / 3 };
+            UpdateInnerSpacing();
             CalculateFitFontSize();
             float scale = (float)m_FitFontSize / m_Font->GetFontSize();
             SplitTextIntoLines(scale);
+            //std::println("当前字体大小:{}", m_FitFontSize);
             //UISizeEvent不会拦截
             return false;
             });
@@ -374,13 +376,17 @@ namespace Kawai
     void UIText::InitMesh()
     {
         m_FontMesh = CreateUnitQuad();
+        auto mode = UIWindow::GetNativeMonitorVideoSize();
+        ui_scale = GetScreenWidth() / mode.x;
         ui_mesh = CreateUIRectMesh(0, 0, w * ui_scale, h * ui_scale);
+        m_ContentSize = { 2 * (float)w * ui_scale / 3, 2 * (float)h * ui_scale / 3 };
+        UpdateInnerSpacing();
         CalculateFitFontSize();
         float scale = (float)m_FitFontSize / m_Font->GetFontSize();
 
         SplitTextIntoLines(scale); // ✅ 最终一次
 
-        std::println("当前字体大小:{}", m_FitFontSize);
+        //std::println("当前字体大小:{}", m_FitFontSize);
     }
 
     void UIText::CalculateFitFontSize()
@@ -390,7 +396,9 @@ namespace Kawai
             float scale = (float)sz / this->m_Font->GetFontSize();
             SplitTextIntoLines(scale);
             float totalH = GetTotalLineHeight(scale);
-            float totalW = GetLineMetrics(m_lines[0], scale).x;
+            float totalW = 0.0f;
+            for (auto& line : m_lines)
+                totalW = std::max(totalW, GetLineMetrics(line, scale).x);
             if (totalH <= m_ContentSize.y && totalW <= m_ContentSize.x)
             {
                 m_FitFontSize = sz;
@@ -402,8 +410,8 @@ namespace Kawai
     void UIText::UpdateInnerSpacing()
     {
         // 总可用区域 = 组件大小
-        float totalW = w;
-        float totalH = h;
+        float totalW = w * ui_scale;
+        float totalH = h * ui_scale;
 
         // 内容区域（文本实际占用的宽高，已经计算好）
         float contentW = m_ContentSize.x;
