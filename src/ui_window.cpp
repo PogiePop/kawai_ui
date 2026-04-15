@@ -54,13 +54,17 @@ namespace Kawai
 
         m_MSPressCall = [this](GLFWwindow* , int btn, int action, int mods)
         {
-            MouseButtonPressEvent mspe(btn);
+                double x, y;
+                glfwGetCursorPos(window, &x, &y);
+            MouseButtonPressEvent mspe(btn, x, y);
             OnEvent(mspe);
         };
 
         m_MSReleaseCall = [this](GLFWwindow* , int btn, int action, int mods)
         {
-            MouseButtonReleaseEvent msre(btn);
+                double x, y;
+                glfwGetCursorPos(window, &x, &y);
+            MouseButtonReleaseEvent msre(btn, x, y);
             OnEvent(msre);
         };
 
@@ -188,7 +192,14 @@ namespace Kawai
                 child->SetShader(this->btnShader);
                 break;
             case Text:
+            {
                 ((UIText*)child)->SetFontShader(this->textShader);
+                child->SetShader(this->radiusShader);
+            }
+                break;
+            case TextBox:
+                ((UITextBox*)child)->SetFontShader(this->textShader);
+                child->SetShader(this->radiusShader);
                 break;
             default:
                 break;

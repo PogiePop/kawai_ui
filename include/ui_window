@@ -67,6 +67,12 @@ namespace Kawai
                 comp->SetShader(this->defaultUIShader);
             }  
                 break;
+            case TextBox:
+            {
+                ((UITextBox*)comp)->SetFontShader(this->textShader);
+                comp->SetShader(this->radiusShader);
+            }
+                break;
             default:
                 break;
             }

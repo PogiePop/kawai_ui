@@ -15,12 +15,12 @@ namespace Kawai
 
     bool UIComponent::IsPointInside(float x, float y)
     {
-        glm::vec2 worldPos = GetWorldPos();
+        glm::vec2 worldPos = GetWorldPos() * ui_scale;
         int screenH = GetScreenHeight();
 
         // 关键：把 GLFW 鼠标 Y 翻转成 UI 坐标系 Y
         float uiMouseY = screenH - y;
-        return (x > worldPos.x && x < worldPos.x + w * ui_scale) &&
+        return (x > worldPos.x  && x < worldPos.x + w * ui_scale) &&
             (uiMouseY > worldPos.y && uiMouseY < worldPos.y + h * ui_scale);
     }
 
@@ -49,7 +49,7 @@ namespace Kawai
         this->ui_shader->SetVec4("color", color);
         glm::mat4 pro = glm::ortho(0.0f, (float)GetScreenWidth(), 0.0f, (float)GetScreenHeight());
         this->ui_shader->SetMat4("pro", pro);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos, 0.0f));
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos * ui_scale, 0.0f));
         this->ui_shader->SetMat4("model", model);
         UIRender::GetInstance().DrawElements(GL_TRIANGLES, this->ui_mesh.vao, this->ui_mesh.indices.size());
     }
@@ -62,7 +62,7 @@ namespace Kawai
         this->ui_shader->SetFloat1("uRadius", ndc_radius);
         glm::mat4 pro = glm::ortho(0.0f, (float)GetScreenWidth(), 0.0f, (float)GetScreenHeight());
         this->ui_shader->SetMat4("pro", pro);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos, 0.0f));
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos*ui_scale, 0.0f));
         this->ui_shader->SetMat4("model", model);
         UIRender::GetInstance().DrawElements(GL_TRIANGLES, this->ui_mesh.vao, this->ui_mesh.indices.size());
     }
@@ -129,7 +129,7 @@ namespace Kawai
         this->ui_shader->SetFloat1("shadowBlur", shadowBlur);
         glm::mat4 pro = glm::ortho(0.0f, (float)GetScreenWidth(), 0.0f, (float)GetScreenHeight());
         this->ui_shader->SetMat4("pro", pro);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos, 0.0f));
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos * ui_scale, 0.0f));
         this->ui_shader->SetMat4("model", model);
         UIRender::GetInstance().DrawElements(GL_TRIANGLES, this->ui_mesh.vao, this->ui_mesh.indices.size());
     }
@@ -342,7 +342,7 @@ namespace Kawai
         );
         ////绘制边框
         ui_shader->use();
-        ui_shader->SetMat4("model", glm::translate(glm::mat4(1.0f), { world.x, world.y, 0.0f }));
+        ui_shader->SetMat4("model", glm::translate(glm::mat4(1.0f), { world.x * ui_scale, world.y * ui_scale, 0.0f }));
         ui_shader->SetMat4("pro", proj);
         ui_shader->SetVec4("color", color_black);
 
@@ -367,8 +367,8 @@ namespace Kawai
             float lineW = lineMetrics.x;
             float lineH = GetLineHeight(baseScale);
 
-            float penX = world.x + CalculateAlignX(lineW);
-            float penY = world.y + startY - i * (lineH + m_lineSpacing);
+            float penX = world.x * ui_scale + CalculateAlignX(lineW);
+            float penY = world.y * ui_scale + startY - i * (lineH + m_lineSpacing);
             DrawLine(penX, penY, line, baseScale);
         }
     }
@@ -670,8 +670,52 @@ namespace Kawai
         }
     }
 
+    void UITextBox::render()
+    {
+
+    }
+
+    bool UITextBox::OnEvent(Event& e)
+    {
+        EventDispatch dispatcher(e);
+        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent& e) {
+            bool inside = IsPointInside((float)e.x, (float)e.y);
+            if (inside && !focused)
+            {
+                focused = true;
+            }
+            else if (!inside && focused)
+            {
+                focused = false;
+            }
+            return inside;
+            });
+        dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent& e) {
+            if (focused)
+            {
+                m_CursorPos = (int)m_Text.size();
+            }
+            return focused;
+            });
+    }
+
+    void UITextBox::InitMesh()
+    {
+        this->ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2;
+    }
+
+    void UITextBox::UpdateCursorBlink()
+    {
+
+    }
+
+    void UITextBox::DrawCursor()
+    {
+    }
+
     template void UIComponent::AddChildComponent<UIRect>(UIRect *);
     template void UIComponent::AddChildComponent<UIPanel>(UIPanel *);
     template void UIComponent::AddChildComponent<UIButton>(UIButton *);
     template void UIComponent::AddChildComponent<UIText>(UIText *);
+    template void UIComponent::AddChildComponent<UITextBox>(UITextBox *);
 }

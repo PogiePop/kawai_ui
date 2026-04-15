@@ -35,6 +35,8 @@ namespace Kawai
         public:
             //按下的按键
             int button;
+            //当前鼠标位置(可选)
+            double xPos, yPos;
             virtual ~MouseButtonEvent() = default;
     };
 
@@ -42,14 +44,20 @@ namespace Kawai
     {
         public:
             EventType_DEF(MouseButtonPress)
-            MouseButtonPressEvent(int btn){ this->button = btn; }
+            MouseButtonPressEvent(int btn, double xPos = 0.0, double y = 0.0)
+            {
+                this->button = btn; this->xPos = xPos; this->yPos = yPos;
+            }
     };
 
     class MouseButtonReleaseEvent : public MouseButtonEvent
     {
         public:
             EventType_DEF(MouseButtonRelease)
-            MouseButtonReleaseEvent(int btn){ this->button = btn; }
+            MouseButtonReleaseEvent(int btn, double xPos = 0.0, double y = 0.0)
+            {
+                this->button = btn; this->xPos = xPos; this->yPos = yPos;
+            }
     };
 }
 

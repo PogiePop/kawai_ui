@@ -21,7 +21,8 @@ namespace Kawai
         Rect,
         Panel,
         Button,
-        Text
+        Text,
+        TextBox
     };
 
 #define COMPONENT_TYPE_DEF(type)                                                        \
@@ -32,7 +33,7 @@ namespace Kawai
     class UIComponent
     {
     public:
-        UIComponent(float x, float y, int w, int h, int priority = 0, bool visible = true)
+        UIComponent(float x, float y, float w, float h, int priority = 0, bool visible = true)
             : x(x), y(y), w(w), h(h), priority(priority), visible(visible)
         {
             TransformToNDCP();
@@ -82,7 +83,7 @@ namespace Kawai
         virtual bool OnEvent(Event& event) = 0;
 
         float x, y, ndc_x, ndc_y, ndc_w, ndc_h;
-        int w, h;
+        float w, h;
         int priority;
         bool visible;
         Shader* ui_shader = nullptr;
@@ -104,7 +105,7 @@ namespace Kawai
     class UIRect : public UIComponent
     {
     public:
-        UIRect(float x, float y, int w, int h, glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+        UIRect(float x, float y, float w, float h, glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
             : UIComponent(x, y, w, h), color(color)
         {
         }
@@ -121,7 +122,7 @@ namespace Kawai
     class UIPanel : public UIComponent
     {
     public:
-        UIPanel(float x, float y, int w, int h,
+        UIPanel(float x, float y, float w, float h,
             glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
             float radius = 50.0f)
             : UIComponent(x, y, w, h), bgColor(color), radius(radius)
@@ -219,7 +220,7 @@ namespace Kawai
     {
     public:
         COMPONENT_TYPE_DEF(Text)
-            UIText(float x, float y, int w, int h, Font* font, const std::string& text, Align align = CENTER, uint32_t fontsize = 16) :
+            UIText(float x, float y, float w, float h, Font* font, const std::string& text, Align align = CENTER, uint32_t fontsize = 16) :
             UIComponent(x, y, w, h), m_Font(font), m_FontSize(fontsize), m_Text(text), m_Align(align)
         {
             //m_ContentSize = { 2 * (float)w * ui_scale / 3, 2 * (float)h * ui_scale / 3 };
@@ -245,7 +246,7 @@ namespace Kawai
         void SetFontColor(const glm::vec4& color) { this->color = color; }
         void SetFontAlign(const Align& align) { this->m_Align = align; UpdateInnerSpacing(); }
 
-    private:
+    protected:
         Shader* m_FontShader = nullptr;
         Mesh m_FontMesh;
         Font* m_Font = nullptr;
@@ -260,12 +261,41 @@ namespace Kawai
         std::vector<std::string> m_lines; //存储每行字符串
 
         //内边距
-        float m_leftSpacing;
-        float m_rightSpacing;
-        float m_topSpacing;
-        float m_bottomSpacing;
-        glm::vec2 m_ContentSize;
+        float m_leftSpacing = 0.0f;
+        float m_rightSpacing = 0.0f;
+        float m_topSpacing = 0.0f;
+        float m_bottomSpacing = 0.0f;
+        glm::vec2 m_ContentSize = { 0.0f, 0.0f };
 
+    };
+
+
+    class UITextBox : public UIText
+    {
+    public:
+        UITextBox(float x, float y, float w, float h, const std::string& placeholder = "", Align align = MIDDLE_LEFT, uint32_t fontSize = 16, Font* font = nullptr)
+        :UIText(x, y, w, h, font, "", align, fontSize)
+        , placeholder(placeholder){ }
+        COMPONENT_TYPE_DEF(TextBox)
+        void render() override;
+        bool OnEvent(Event& e) override;
+        void InitMesh() override;
+    private:
+        void UpdateCursorBlink();//更新光标闪烁动画
+        void DrawCursor();//绘制光标
+
+    private:
+        glm::vec4 m_FocusBgColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        glm::vec4 m_BorderColor = { 0.75f, 0.75f, 0.75f, 1.0f };
+        glm::vec4 m_PlaceholderColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+        std::string placeholder;
+        // 光标
+        float m_CursorTimer = 0.0f;
+        bool m_CursorVisible = true;
+        int m_CursorPos = 0;
+
+        //圆角
+        float radius = 9.0f, ndc_radius = 0.0f;
     };
 }
 
