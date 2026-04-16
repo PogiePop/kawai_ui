@@ -80,13 +80,15 @@ link_directories(
 # 可执行文件
 add_executable(${PROJECT_NAME} main.cpp)
 
-# 链接
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    glfw3
+set(LIB glfw3
     opengl32
     glad
     kawai
-    freetyped
+    freetyped)
+
+# 链接
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${LIB}
 )
 
 # ======================================
@@ -109,3 +111,12 @@ add_custom_command(
     COMMENT "Copy fonts (fast incremental)..."
     VERBATIM
 )
+
+enable_testing()
+add_executable(ui_test test/ui_test.cpp)
+add_test(ui_test ui_test)
+target_link_libraries(ui_test ${LIB})
+
+add_executable(textbox test/textbox_test.cpp)
+add_test(textbox textbox)
+target_link_libraries(textbox ${LIB})

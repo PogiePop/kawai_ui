@@ -44,7 +44,7 @@ namespace Kawai
     {
         public:
             EventType_DEF(MouseButtonPress)
-            MouseButtonPressEvent(int btn, double xPos = 0.0, double y = 0.0)
+            MouseButtonPressEvent(int btn, double xPos = 0.0, double yPos = 0.0)
             {
                 this->button = btn; this->xPos = xPos; this->yPos = yPos;
             }
@@ -54,7 +54,7 @@ namespace Kawai
     {
         public:
             EventType_DEF(MouseButtonRelease)
-            MouseButtonReleaseEvent(int btn, double xPos = 0.0, double y = 0.0)
+            MouseButtonReleaseEvent(int btn, double xPos = 0.0, double yPos = 0.0)
             {
                 this->button = btn; this->xPos = xPos; this->yPos = yPos;
             }

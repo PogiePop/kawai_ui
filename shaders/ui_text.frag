@@ -14,6 +14,8 @@ void main()
     // ⭐ 核心：边缘重建
     float dist = sdf - 0.5;
 
+
+
     float width = fwidth(sdf); // 抗锯齿关键
 
     float alpha = smoothstep(-width, width, dist);

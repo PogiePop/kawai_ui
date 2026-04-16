@@ -7,6 +7,7 @@
 #include <event/event_mouse>
 #include <queue>
 #include <event/event_ui>
+#include <event/event_keyboard>
 namespace Kawai
 {
     void UIWindow::init(int w, int h, const std::string &title)
@@ -98,6 +99,28 @@ namespace Kawai
                 if(action == GLFW_RELEASE && self->m_MSReleaseCall)self->m_MSReleaseCall(window, button, action, mods);
             }
         });
+
+        glfwSetCharCallback(window, [](GLFWwindow* window, unsigned int codepoint)
+            {
+                UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
+                if (self)
+                {
+                    KeyInputEvent e(codepoint);
+                    self->OnEvent(e);
+                }
+            });
+
+        glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+            UIWindow* self = (UIWindow*)glfwGetWindowUserPointer(window);
+            if (self)
+            {
+                if (action == GLFW_PRESS)
+                {
+                    KeyPressEvent kpe(key);
+                    self->OnEvent(kpe);
+                }
+            }
+            });
     }
 
     void UIWindow::OnUpdate()
@@ -198,8 +221,11 @@ namespace Kawai
             }
                 break;
             case TextBox:
+            {
                 ((UITextBox*)child)->SetFontShader(this->textShader);
-                child->SetShader(this->radiusShader);
+                child->SetShader(this->borderRectShader);
+                ((UITextBox*)child)->SetCurSorShader(this->defaultUIShader);
+            }
                 break;
             default:
                 break;
@@ -251,6 +277,14 @@ namespace Kawai
         auto monitor = glfwGetPrimaryMonitor();
         auto mode = glfwGetVideoMode(monitor);
         return { mode->width, mode->height };
+    }
+
+    glm::vec2 UIWindow::GetCursorPos()
+    {
+        double x, y;
+        auto window = glfwGetCurrentContext();
+        glfwGetCursorPos(window, &x, &y);
+        return { x, y };
     }
 
 }

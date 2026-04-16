@@ -22,6 +22,7 @@ namespace Kawai
             this->radiusShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_radius.frag");
             this->btnShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_btn.frag");
             this->textShader = new Shader("shaders/ui_text.vert", nullptr, "shaders/ui_text.frag");
+            this->borderRectShader = new Shader("shaders/ui.vert", nullptr, "shaders/ui_borderrect.frag");
             Font* det = new Font();
             det->load("fonts/BRADHITC.TTF", 64);
             ui_fonts["default"] = det;
@@ -43,6 +44,7 @@ namespace Kawai
         void SetWindowColor(const glm::vec4 &color) { this->color = color; }
 
         static glm::vec2 GetNativeMonitorVideoSize();
+        static glm::vec2 GetCursorPos();
 
         std::map<std::string, Font*>& GetFontResources(){ return this->ui_fonts; }
 
@@ -70,7 +72,8 @@ namespace Kawai
             case TextBox:
             {
                 ((UITextBox*)comp)->SetFontShader(this->textShader);
-                comp->SetShader(this->radiusShader);
+                comp->SetShader(this->borderRectShader);
+                ((UITextBox*)comp)->SetCurSorShader(this->defaultUIShader);
             }
                 break;
             default:
@@ -112,6 +115,7 @@ namespace Kawai
         Shader *defaultUIShader;
         Shader *radiusShader;
         Shader *btnShader;
+        Shader* borderRectShader;
         
         WindowFrameSizeCallback m_SizeCall;
         CursorMoveCallback m_CursorCall;

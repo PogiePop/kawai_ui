@@ -245,6 +245,8 @@ namespace Kawai
         void DrawLine(float x, float y, const std::string& line, float scale);
         void SetFontColor(const glm::vec4& color) { this->color = color; }
         void SetFontAlign(const Align& align) { this->m_Align = align; UpdateInnerSpacing(); }
+        void SetText(const std::string& text) { this->m_Text = text; }
+        void SetBgColor(const glm::vec4& color) { this->bgColor = color; }
 
     protected:
         Shader* m_FontShader = nullptr;
@@ -269,34 +271,61 @@ namespace Kawai
 
     };
 
-
-    class UITextBox : public UIText
+    class UITextBox : public UIComponent
     {
     public:
-        UITextBox(float x, float y, float w, float h, const std::string& placeholder = "", Align align = MIDDLE_LEFT, uint32_t fontSize = 16, Font* font = nullptr)
-        :UIText(x, y, w, h, font, "", align, fontSize)
-        , placeholder(placeholder){ }
         COMPONENT_TYPE_DEF(TextBox)
+
+            UITextBox(float x, float y, float w, float h, Font* font, uint32_t fontsize = 24)
+            : UIComponent(x, y, w, h), m_Font(font), m_FontSize(fontsize)
+        {
+        }
+
+        void InitMesh() override;
         void render() override;
         bool OnEvent(Event& e) override;
-        void InitMesh() override;
-    private:
-        void UpdateCursorBlink();//更新光标闪烁动画
-        void DrawCursor();//绘制光标
+
+        void SetFontShader(Shader* sd) { m_FontShader = sd; }
+        void SetCurSorShader(Shader* sd) { m_CursorShader = sd; }
+        void SetText(const std::string& t);
 
     private:
-        glm::vec4 m_FocusBgColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        glm::vec4 m_BorderColor = { 0.75f, 0.75f, 0.75f, 1.0f };
-        glm::vec4 m_PlaceholderColor = { 0.5f, 0.5f, 0.5f, 1.0f };
-        std::string placeholder;
-        // 光标
-        float m_CursorTimer = 0.0f;
-        bool m_CursorVisible = true;
-        int m_CursorPos = 0;
+        std::string text = "";
+        int cursorIndex = 0;
 
-        //圆角
-        float radius = 9.0f, ndc_radius = 0.0f;
+        float viewOffsetX = 0.0f;
+       
+
+        std::vector<float> glyphPos;
+        std::vector<int> visibaleGlyph;
+
+        Font* m_Font = nullptr;
+        Shader* m_FontShader = nullptr;
+        Shader* m_CursorShader = nullptr;
+        Mesh m_FontMesh;
+        //Mesh m_BorderMesh;
+        Mesh m_CursorMesh;
+        uint32_t m_FontSize;
+
+        float cursorBlink = 0.0f;
+        bool showCursor = true;
+        
+    private:
+        void RecalcGlyph(float scale);
+        void InsertChar(char c);
+        void DeleteChar();
+        void MoveLeft();
+        void MoveRight();
+        void UpdateView(float visibleWidth);
+        void UpdateCursorFromMouse(float mouseX);
+
+        float GetCursorX() const;
+        void AutoScrollToEnd();
+        void AutoScrollToCursor();
     };
+
+
+    
 }
 
 #endif

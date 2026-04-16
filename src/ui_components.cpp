@@ -9,6 +9,7 @@
 #include <event/event_ui>
 #include <event/event_mouse>
 #include <xutility>
+#include <event/event_keyboard>
 
 namespace Kawai
 {
@@ -130,6 +131,7 @@ namespace Kawai
         glm::mat4 pro = glm::ortho(0.0f, (float)GetScreenWidth(), 0.0f, (float)GetScreenHeight());
         this->ui_shader->SetMat4("pro", pro);
         glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos * ui_scale, 0.0f));
+        //std::println("{}X{}", worldPos.x * ui_scale, worldPos.y * ui_scale);
         this->ui_shader->SetMat4("model", model);
         UIRender::GetInstance().DrawElements(GL_TRIANGLES, this->ui_mesh.vao, this->ui_mesh.indices.size());
     }
@@ -335,7 +337,8 @@ namespace Kawai
         float contentBottom = world.y + m_bottomSpacing;
         auto totalH = GetTotalLineHeight(baseScale);
         float startY = CalculateAlignY(totalH);
-        //std::println("startY:{}", startY);
+        /*if(number == 3)
+        std::println("startY:{}", startY);*/
         glm::mat4 proj = glm::ortho(
             0.0f, (float)GetScreenWidth(),
             0.0f, (float)GetScreenHeight()
@@ -358,7 +361,7 @@ namespace Kawai
         m_FontShader->use();
         m_FontShader->SetMat4("pro", proj);
         m_FontShader->SetVec4("textColor", color);
-
+ 
         //std::println("bottomSpacing={}, totalH={}, contentY={}", m_bottomSpacing, totalH, m_ContentSize.y);
         for (int i = 0; i < m_lines.size(); i++)
         {
@@ -368,7 +371,7 @@ namespace Kawai
             float lineH = GetLineHeight(baseScale);
 
             float penX = world.x * ui_scale + CalculateAlignX(lineW);
-            float penY = world.y * ui_scale + startY - i * (lineH + m_lineSpacing);
+            float penY = world.y * ui_scale + startY - i * (lineH + m_lineSpacing * ui_scale);
             DrawLine(penX, penY, line, baseScale);
         }
     }
@@ -624,7 +627,7 @@ namespace Kawai
         case Align::MIDDLE_LEFT:
         case Align::CENTER:
         case Align::MIDDLE_RIGHT:
-            return contentTop + (m_ContentSize.y - totalH) * 0.5f + totalH;
+            return contentTop + (m_ContentSize.y - totalH) * 0.5f + +totalH;
 
             // 顶部对齐：底部 + (内容高度 - 文本总高度)
         case Align::TOP_LEFT:
@@ -640,6 +643,7 @@ namespace Kawai
     void UIText::DrawLine(float x, float y, const std::string& line, float scale)
     {
         float penX = x;
+     
         for (int i = 0; i < line.size(); i++)
         {
             char c = line[i];
@@ -649,8 +653,7 @@ namespace Kawai
 
 
             float xpos = penX + ch.bearing.x * scale;
-            float ypos = y - ch.bearing.y * scale;
-            //std::println("x={}, y={}", xpos, ypos);
+            float ypos = y - ch.size.y * scale;
             float w = ch.size.x * scale;
             float h = ch.size.y * scale;
 
@@ -670,48 +673,256 @@ namespace Kawai
         }
     }
 
+    void UITextBox::InitMesh()
+    {
+        auto mode = UIWindow::GetNativeMonitorVideoSize();
+        ui_scale = GetScreenWidth() / mode.x;
+        ui_mesh = CreateUIRectMesh(0, 0, w * ui_scale, h * ui_scale);
+        m_FontMesh = CreateUnitQuad();
+        m_CursorMesh = CreateUIRectMesh(0, 0, 2.0f * ui_scale, h * ui_scale);
+    }
+
     void UITextBox::render()
     {
 
+        
+        glm::vec2 worldPos = GetWorldPos();
+        this->ui_shader->use();
+        this->ui_shader->SetVec4("color", glm::vec4(1.0f));
+        glm::mat4 pro = glm::ortho(0.0f, (float)GetScreenWidth(), 0.0f, (float)GetScreenHeight());
+        this->ui_shader->SetMat4("pro", pro);
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(worldPos * ui_scale, 0.0f));
+        this->ui_shader->SetMat4("model", model);
+        UIRender::GetInstance().DrawElements(GL_TRIANGLES, this->ui_mesh.vao, this->ui_mesh.indices.size());
+
+        if (!m_Font || text.empty() || !m_FontShader)return;
+        this->m_FontShader->use();
+        this->m_FontShader->SetVec4("textColor", color_red);
+        //开启ui裁剪
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(worldPos.x * ui_scale, worldPos.y * ui_scale, w * ui_scale, h * ui_scale);
+        //绘制字符
+        float penX = worldPos.x * ui_scale;
+        //std::println("gly:{}, vis:{}", glyphPos.size(), visibaleGlyph.size());
+        for (int i = 0; i < visibaleGlyph.size(); ++i)
+        {
+            auto ch = m_Font->GetCharacter(text[visibaleGlyph[i]]);
+            float penY = (worldPos.y - (ch.size.y - ch.bearing.y)) * ui_scale;
+            float x = penX + (glyphPos[visibaleGlyph[i]] + ch.bearing.x) * ui_scale;
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(x - viewOffsetX * ui_scale, penY, 0.0f));
+            model = glm::scale(model, glm::vec3(ch.size.x*ui_scale, ch.size.y * ui_scale, 1.0f));
+            this->m_FontShader->SetMat4("pro", pro);
+            this->m_FontShader->SetMat4("model", model);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, ch.tex_ID);
+            this->m_FontShader->SetInt1("text", 0);
+            UIRender::GetInstance().DrawElements(
+                GL_TRIANGLES,
+                m_FontMesh.vao,
+                m_FontMesh.indices.size()
+            );
+           /* penX += (ch.advance >> 6) * ui_scale;*/
+        }
+
+        if (focused && showCursor)
+        {
+            // 更新闪烁计时器
+            cursorBlink += Time::GetInstance().deltatime;
+
+
+            // 闪烁周期 0.53 秒（显示 265ms，隐藏 265ms）
+            const float blinkInterval = 0.53f;
+            if (cursorBlink >= blinkInterval)
+            {
+                cursorBlink = 0.0f;
+            }
+            if (cursorBlink < blinkInterval * 0.5f) {
+                float cx = GetCursorX();
+                glm::vec2 wp = GetWorldPos();
+
+                float cursorX = (wp.x + cx - viewOffsetX) * ui_scale;
+                float cursorY = wp.y * ui_scale;
+
+                cursorX = std::round(cursorX);
+                cursorY = std::round(cursorY);
+
+                this->m_CursorShader->use();
+                this->m_CursorShader->SetVec4("color", { 1.0f, 1.0f, 1.0f, 1.0f });
+                this->m_CursorShader->SetMat4("pro", pro);
+
+                model = glm::translate(glm::mat4(1.0f),
+                    glm::vec3(cursorX, cursorY, 0.0f));
+                this->m_CursorShader->SetMat4("model", model);
+                UIRender::GetInstance().DrawElements(GL_TRIANGLES,
+                    m_CursorMesh.vao,
+                    m_CursorMesh.indices.size()
+                );
+            }
+        }
+
+        glDisable(GL_SCISSOR_TEST);
     }
 
     bool UITextBox::OnEvent(Event& e)
     {
         EventDispatch dispatcher(e);
-        dispatcher.Dispatch<MouseMoveEvent>([this](MouseMoveEvent& e) {
-            bool inside = IsPointInside((float)e.x, (float)e.y);
-            if (inside && !focused)
+        //鼠标点击
+        dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent& e) {
+            bool inside = IsPointInside(e.xPos, e.yPos);
+            focused = inside;
+            if (inside)
             {
-                focused = true;
-            }
-            else if (!inside && focused)
-            {
-                focused = false;
+                cursorBlink = 0.0f;  // ✅ 获得焦点时重置
             }
             return inside;
             });
-        dispatcher.Dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent& e) {
+       
+        //输入字符
+        dispatcher.Dispatch<KeyInputEvent>([this](KeyInputEvent& e) {
             if (focused)
             {
-                m_CursorPos = (int)m_Text.size();
+                if (isascii(e.button))
+                {
+                    text.insert(text.begin() + cursorIndex, (char)e.button);
+                    ++cursorIndex;
+                    RecalcGlyph(ui_scale);
+                    UpdateView(w);
+                    //AutoScrollToEnd();
+                    
+                    AutoScrollToCursor();
+                    cursorBlink = 0.0f;  // ✅ 用户输入时重置
+                   
+                }
             }
             return focused;
             });
+
+        dispatcher.Dispatch<KeyPressEvent>([this](KeyPressEvent& e) {
+            if (focused)
+            {
+                if (e.button == GLFW_KEY_BACKSPACE)
+                {
+                    if (text.empty() || cursorIndex - 1 < 0)return focused;
+                    text.erase(text.begin() + cursorIndex - 1);
+                    cursorIndex--;
+                    RecalcGlyph(ui_scale);
+                    UpdateView(w);
+                    //AutoScrollToEnd()
+                    AutoScrollToCursor();
+                    cursorBlink = 0.0f;  // ✅ 重置
+                }
+
+                // 左右方向键控制光标
+                if (e.button == GLFW_KEY_LEFT)
+                {
+                    cursorIndex = glm::max(cursorIndex - 1, 0);
+                    AutoScrollToCursor();
+                    cursorBlink = 0.0f;  // ✅ 重置
+                }
+                if (e.button == GLFW_KEY_RIGHT)
+                {
+                    cursorIndex = glm::min(cursorIndex + 1, (int)text.size());
+                    AutoScrollToCursor();
+                }
+            }
+            return focused;
+            });
+
+        dispatcher.Dispatch<UISizeEvent>([this](UISizeEvent& e) {
+            auto mode = UIWindow::GetNativeMonitorVideoSize();
+            this->ui_scale = (float)GetScreenWidth() / mode.x;
+            ModifyUIRectMesh(ui_mesh, 0, 0, w * ui_scale, h * ui_scale);
+            ModifyUIRectMesh(m_CursorMesh, 0, 0, 2.0f * ui_scale, h * ui_scale);
+            RecalcGlyph(ui_scale);
+            UpdateView(w);
+            //UISizeEvent不会拦截
+            return false;
+            });
+
+        return e.handle;
     }
 
-    void UITextBox::InitMesh()
+
+    void UITextBox::RecalcGlyph(float scale)
     {
-        this->ndc_radius = radius / std::min(GetScreenWidth(), GetScreenHeight()) * 2;
+        glyphPos.clear();
+        float penX = 0.0f;
+        for (int i = 0; i < text.size(); ++i)
+        {
+            auto ch = m_Font->GetCharacter(text[i]);
+            //float x = penX + ch.bearing.x;
+            glyphPos.push_back(penX);
+            penX += (ch.advance >> 6);
+        }
     }
 
-    void UITextBox::UpdateCursorBlink()
+    void UITextBox::UpdateView(float visibleWidth)
     {
-
+        visibaleGlyph.clear();
+        float viewLeft = viewOffsetX;
+        float viewRight = viewLeft + visibleWidth;
+        for (int i = 0; i < glyphPos.size(); ++i)
+        {
+            auto ch = m_Font->GetCharacter(text[i]);
+            float x = glyphPos[i];
+            float x1 = glyphPos[i] + ch.advance;
+            if (x1 >= viewLeft && x <= viewRight)
+            {
+                visibaleGlyph.push_back(i);
+            }
+        }
     }
 
-    void UITextBox::DrawCursor()
+    void UITextBox::AutoScrollToEnd()
     {
+        if (glyphPos.empty())
+        {
+            viewOffsetX = 0.0f;
+            return;
+        }
+        auto ch = m_Font->GetCharacter(text[glyphPos.size() - 1]);
+        float lastX = glyphPos.back();
+        float visibleWidth = w * ui_scale;
+        float offsetX = (lastX - visibleWidth) / ui_scale;
+        if (offsetX < 0)
+            offsetX = 0;
+        viewOffsetX = offsetX;
     }
+
+    void UITextBox::AutoScrollToCursor()
+    {
+        float cx = GetCursorX();
+        float visibleW = w;
+
+        if (cx > (viewOffsetX + w))
+        {
+            viewOffsetX = (cx - visibleW);
+        }
+        
+        if (cx < viewOffsetX)
+        {
+            viewOffsetX = cx;
+        }
+        if (viewOffsetX < 0)
+            viewOffsetX = 0;
+        
+        if (cursorIndex <= 0)
+            viewOffsetX = 0;
+    }
+
+    float UITextBox::GetCursorX() const
+    {
+        if (cursorIndex <= 0 || glyphPos.empty())
+            return 0.0f;
+
+        auto ch = m_Font->GetCharacter(text[cursorIndex - 1]);
+        return  glyphPos[cursorIndex - 1] + (ch.advance >> 6);
+    }
+    
+
+    
+
 
     template void UIComponent::AddChildComponent<UIRect>(UIRect *);
     template void UIComponent::AddChildComponent<UIPanel>(UIPanel *);
